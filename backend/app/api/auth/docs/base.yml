@@ -1,0 +1,11 @@
+tags:
+  - Auth
+responses:
+  200:
+    description: Ruta de autenticación funcionando
+    schema:
+      type: Object
+      properties: 
+        message:
+          type: string
+          example: "Auth route is working!"

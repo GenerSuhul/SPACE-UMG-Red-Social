@@ -1,0 +1,22 @@
+tags:
+  - Auth
+parameters:
+  - in: body
+    name: body
+    required: true
+    schema:
+      required:
+        - username
+        - password
+      properties:
+        username:
+            type: string
+            example: "admin"
+        password:
+            type: string
+            example: "Admin123"
+responses:
+  201:
+    description: Login aceptado
+  422:
+    description: Error en datos de login
