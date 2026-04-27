@@ -2,22 +2,19 @@ from flask import request, jsonify
 from . import auth_bp
 from flasgger import swag_from
 
-@auth_bp.route('/', methods=['GET'])
-@swag_from("docs/base.yml")
-def auth():
-    """
-    Ruta base de pruebas
-    """
-    return jsonify({"message": "Auth route is working!"})
+from .services import AuthService
 
-@auth_bp.route('/login', methods=['POST'])
-@swag_from("docs/login.yml")
-def login():
+@auth_bp.route('/register', methods=['POST'])
+@swag_from("docs/register.yml")
+def register_user():
     """
-    Login de usuario
+    Ruta de registro de usuario
     """
     data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
 
-    return jsonify({"message": f"Login attempt for user: {username}"})
+    result = AuthService.register(data)
+
+    if not result["ok"]:
+        return jsonify({"ok": False, "errors": result["errors"]}), 400
+    
+    return jsonify({"ok": True, "user_id": result["user_id"]}), 201

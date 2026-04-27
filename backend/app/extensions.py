@@ -5,6 +5,6 @@ from flasgger import Swagger
 
 # Se crean SIN app — se vinculan luego con init_app()
 # Esto es el patrón correcto para evitar importaciones circulares.
-mongo = PyMongo()
-jwt   = JWTManager()
+mongo   = PyMongo()
+jwt     = JWTManager()
 swagger = Swagger()

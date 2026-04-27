@@ -1,0 +1,42 @@
+tags:
+  - User
+consumes:
+  - application/json
+produces:
+  - application/json
+parameters:
+  - in: body
+    name: body
+    required: true
+    schema:
+      required:
+        - username
+        - password
+        - first_name
+        - last_name
+        - age
+      properties:
+        username:
+          type: string
+          example: "admin"
+        password:
+          type: string
+          example: "Admin#123"
+          description: "La contraseña debe tener al menos 8 caracteres, una mayuscula, una minuscula, un numero y un caracter especial"
+        email:
+          type: string
+          example: "admin@gmail.com"
+        age: 
+          type: integer
+          example: 21
+        first_name:
+          type: string
+          example: "Eric"
+        last_name: 
+          type: string
+          example: "Rivas"
+responses:
+  201:
+    description: User Registered Successfully
+  400:
+    description: Bad Request

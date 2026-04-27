@@ -9,8 +9,10 @@ SWAGGER_CONFIG = {
     "version": "1.0.0",
     "description": "Backend para red social de proyecto final, python y mongodb",
     "uiversion": 3,
-    "openapi": "3.0.2",
+    "swagger": "2.0",
     "specs_route": "/docs/",
+    "consumes": ["application/json"],
+    "produces": ["application/json"],
 }
 
 def create_app(config_name: str = "development") -> Flask:
