@@ -13,5 +13,9 @@ def get_user():
     Api para visualizar datos del usuario
     """
     user_id = get_jwt_identity()
-    UserService.find_by_id(user_id)
-    return js({'ok': True})
+    result = UserService.find_by_id(user_id)
+
+    if not result["ok"]:
+        return js(result), 400
+
+    return js(result), 200

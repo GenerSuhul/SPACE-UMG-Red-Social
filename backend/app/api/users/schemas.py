@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr
 
 class UserSchema(BaseModel):
-    id:         int
+    _id:        str
     username:   str
     email:      EmailStr
     age:        int
