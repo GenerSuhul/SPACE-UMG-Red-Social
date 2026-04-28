@@ -14,15 +14,15 @@ class BaseConfig:
     DEBUG: bool = False
     TESTING: bool = False
 
-    @classmethod
-    def vermongo(cls):
-        print(f"MONGO_URI: {cls.MONGO_URI}")
-        return cls.MONGO_URI
+    # @classmethod
+    # def vermongo(cls):
+    #     print(f"MONGO_URI: {cls.MONGO_URI}")
+    #     return cls.MONGO_URI
 
 @dataclass
 class DevelopmentConfig(BaseConfig):
     DEBUG: bool    = True
-    MONGO_URI: str = BaseConfig.vermongo()
+    # MONGO_URI: str = BaseConfig.vermongo()
 
 @dataclass
 class ProductionConfig(BaseConfig):

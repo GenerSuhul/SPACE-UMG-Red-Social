@@ -1,0 +1,26 @@
+tags:
+  - Auth
+consumes:
+  - application/json
+produces:
+  - application/json
+parameters:
+  - in: body
+    name: body
+    required: true
+    schema: 
+      required:
+        - username
+        - password
+      properties:
+        username: 
+          type: string
+          example: "admin"
+        password:
+          type: string
+          example: "Admin#100"
+responses:
+  201:
+    description: User Login successfully
+  400:
+    description: Invalid Login
