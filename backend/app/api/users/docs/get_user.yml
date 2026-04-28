@@ -1,0 +1,10 @@
+tags:
+  - Users
+security:
+  - Bearer: []
+responses:
+  200:
+    description: User finded
+
+  404:
+    description: User not found

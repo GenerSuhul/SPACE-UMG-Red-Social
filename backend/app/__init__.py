@@ -13,6 +13,15 @@ SWAGGER_CONFIG = {
     "specs_route": "/docs/",
     "consumes": ["application/json"],
     "produces": ["application/json"],
+
+    "securityDefinitions": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "Formato: Bearer {token}"
+        }
+    }
 }
 
 def create_app(config_name: str = "development") -> Flask:
@@ -43,5 +52,7 @@ def _init_extensions(app: Flask) -> None:
 
 def _register_blueprints(app: Flask) -> None:
     from .api.auth import auth_bp
+    from .api.users import user_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
+    app.register_blueprint(user_bp, url_prefix="/users")
