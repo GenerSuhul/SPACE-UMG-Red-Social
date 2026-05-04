@@ -1,6 +1,6 @@
 # app/config.py
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 @dataclass
 class BaseConfig:
@@ -23,20 +23,17 @@ class BaseConfig:
 class DevelopmentConfig(BaseConfig):
     DEBUG: bool    = True
 
-    CORS_ORIGIN: list = ["*"]
     # MONGO_URI: str = BaseConfig.vermongo()
 
 @dataclass
 class ProductionConfig(BaseConfig):
     MONGO_URI: str = os.getenv("MONGO_URI", None)
     # TODO cuando se despliegue agregar la url del frontent http://www.forntend.com
-    CORS_ORIGIN: list = []
 
 @dataclass
 class TestingConfig(BaseConfig):
     TESTING: bool  = True
     MONGO_URI: str = "mongodb://localhost:27017/test_db"
-    CORS_ORIGIN: list = ["*"]
 
 config_by_name: dict[str, type] = {
     "development": DevelopmentConfig,

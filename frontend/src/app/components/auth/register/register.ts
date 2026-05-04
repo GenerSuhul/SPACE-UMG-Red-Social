@@ -1,5 +1,8 @@
 import { Component, signal } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { UserRegisterInterface } from '../../../models/auth';
+import { Auth } from '../../../service/auth/auth';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-register',
@@ -13,7 +16,9 @@ export class Register {
   hidePass = signal(true);
 
   constructor(
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private authService: Auth,
+    private router: Router
   ) {
     this.registerForm = this.fb.group({
       username: ['', [Validators.required, Validators.minLength(3)]],
@@ -32,7 +37,19 @@ export class Register {
   onSubmit() {
     if (!this.registerForm.valid) return
 
-    console.log("Envio correcto")
+    // console.log("Envio correcto")
+
+    const userRegister: UserRegisterInterface = this.registerForm.value;
+
+    this.authService.registerUser(userRegister).subscribe(
+      (value) => {
+        if (value) {
+          this.router.navigate(['/']);
+        }
+      }, (error) => {
+        console.error("Error en registrar usuario");
+      }
+    )
   }
 
 }

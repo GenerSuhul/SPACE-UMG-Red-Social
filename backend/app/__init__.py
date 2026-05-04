@@ -51,9 +51,14 @@ def _init_extensions(app: Flask) -> None:
 
     cors.init_app(app, resources={
         r"/api/*": {
-            "origins": app.config["CORS_ORIGINS"],
+            "origins": ["*"],
             "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"]
+        }, 
+        r"/auth/*": {
+            "origins": ["*"],
+            "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type"]
         }
     })
 

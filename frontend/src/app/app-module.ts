@@ -4,6 +4,7 @@ import { BrowserModule } from '@angular/platform-browser';
 import { AppRoutingModule } from './app-routing-module';
 import { App } from './app';
 import { provideAnimations } from '@angular/platform-browser/animations';
+import { provideHttpClient } from '@angular/common/http';
 
 @NgModule({
   declarations: [
@@ -16,6 +17,7 @@ import { provideAnimations } from '@angular/platform-browser/animations';
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideAnimations(),
+    provideHttpClient(),
   ],
   bootstrap: [App]
 })
