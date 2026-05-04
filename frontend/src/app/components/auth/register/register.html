@@ -1,0 +1,84 @@
+<div class="auth-wrapper">
+  <!-- Fondo con efecto de desenfoque opcional -->
+  <div class="blur-background"></div>
+
+  <div class="auth-container">
+
+    <!-- Logo Icono (Círculo negro de la imagen) -->
+    <div class="auth-logo">
+      <mat-icon>radio_button_unchecked</mat-icon>
+    </div>
+
+    <!-- Título principal -->
+    <h1 class="auth-title">Crear Cuenta</h1>
+
+    <!-- Tarjeta de formulario con bordes redondeados pronunciados -->
+    <mat-card class="auth-card">
+      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+
+        <mat-card-content>
+
+          <!-- Campo Usuario -->
+          <mat-form-field appearance="fill" class="full-width">
+            <mat-label>USUARIO</mat-label>
+            <input matInput formControlName="username" placeholder="Ingresa tu usuario">
+            <mat-error *ngIf="registerForm.get('username')?.hasError('required')">El usuario es requerido</mat-error>
+          </mat-form-field>
+
+          <!-- Campo Email -->
+          <mat-form-field appearance="fill" class="full-width">
+            <mat-label>EMAIL</mat-label>
+            <input matInput formControlName="email" type="email" placeholder="Ingresa tu email">
+            <mat-error *ngIf="registerForm.get('email')?.hasError('email')">Formato inválido</mat-error>
+          </mat-form-field>
+
+          <!-- Campo Contraseña con botón de mostrar/ocultar -->
+          <mat-form-field appearance="fill" class="full-width">
+            <mat-label>CONTRASEÑA</mat-label>
+            <input matInput [type]="hidePass() ? 'password' : 'text'" formControlName="password" placeholder="Ingresa tu contraseña">
+
+            <!-- Botón personalizado 'MOSTRAR' en el matSuffix -->
+            <div matSuffix class="password-toggle" (click)="togglePassword()">
+              <mat-icon class="toggle-icon">{{hidePass() ? 'visibility_off' : 'visibility'}}</mat-icon>
+              <span class="toggle-text">{{hidePass() ? 'MOSTRAR' : 'OCULTAR'}}</span>
+            </div>
+
+            <mat-error>Mínimo 8 caracteres</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="fill" class="mid-width">
+            <mat-label>Edad</mat-label>
+            <input matInput formControlName="age" placeholder="Ingrese su edad" type="number">
+            <mat-error *ngIf="registerForm.get('age')?.hasError('age')">Edad invalida</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="fill" class="full-width">
+            <mat-label>Nombres</mat-label>
+            <input type="text" matInput formControlName="first_name" placeholder="Ingres su nombre">
+            <mat-error *ngIf="registerForm.get('first_name')?.hasError('first_name')">Nonmbre invalido</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="fill" class="full-width">
+            <mat-label>Apellidos</mat-label>
+            <input type="text" matInput formControlName="last_name" placeholder="Ingres su apellido">
+            <mat-error *ngIf="registerForm.get('last_name')?.hasError('last_name')">Apellido invalido</mat-error>
+          </mat-form-field>
+
+        </mat-card-content>
+
+        <!-- Botón principal 'ACCEDER' personalizado -->
+        <div class="auth-actions">
+          <button mat-flat-button class="submit-button" type="submit" [disabled]="registerForm.invalid">
+            REGISTRARSE
+          </button>
+        </div>
+
+        <!-- Enlace secundario inferior -->
+        <div class="secondary-link">
+          <a routerLink="/auth/login">¿Ya tienes cuenta? Inicia Sesión</a>
+        </div>
+
+      </form>
+    </mat-card>
+  </div>
+</div>
