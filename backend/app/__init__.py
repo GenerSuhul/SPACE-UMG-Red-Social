@@ -1,7 +1,7 @@
 # app/__init__.py
 from flask import Flask
 from .config import config_by_name
-from .extensions import mongo, jwt, swagger
+from .extensions import mongo, jwt, swagger, cors
 
 # Configuración base del Swagger UI
 SWAGGER_CONFIG = {
@@ -49,10 +49,18 @@ def _init_extensions(app: Flask) -> None:
     jwt.init_app(app)
     swagger.init_app(app)
 
+    cors.init_app(app, resources={
+        r"/api/*": {
+            "origins": app.config["CORS_ORIGINS"],
+            "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"]
+        }
+    })
+
 
 def _register_blueprints(app: Flask) -> None:
     from .api.auth import auth_bp
     from .api.users import user_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
-    app.register_blueprint(user_bp, url_prefix="/users")
+    app.register_blueprint(user_bp, url_prefix="/api/users")
