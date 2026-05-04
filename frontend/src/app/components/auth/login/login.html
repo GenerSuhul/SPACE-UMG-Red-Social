@@ -1,0 +1,56 @@
+<div class="auth-wrapper">
+  <!-- Fondo con efecto de desenfoque opcional -->
+  <div class="blur-background"></div>
+
+  <div class="auth-container">
+
+    <!-- Logo Icono (Círculo negro de la imagen) -->
+    <div class="auth-logo">
+      <mat-icon>radio_button_unchecked</mat-icon>
+    </div>
+
+    <!-- Título principal -->
+    <h1 class="auth-title">Crear Cuenta</h1>
+
+    <!-- Tarjeta de formulario con bordes redondeados pronunciados -->
+    <mat-card class="auth-card">
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+
+        <mat-card-content>
+
+          <!-- Campo Usuario -->
+          <mat-form-field appearance="fill" class="full-width">
+            <mat-label>USUARIO</mat-label>
+            <input matInput formControlName="username" placeholder="Ingresa tu usuario">
+            <mat-error *ngIf="loginForm.get('username')?.hasError('required')">El usuario es requerido</mat-error>
+          </mat-form-field>
+
+          <!-- Campo Contraseña con botón de mostrar/ocultar -->
+          <mat-form-field appearance="fill" class="full-width">
+            <mat-label>CONTRASEÑA</mat-label>
+            <input matInput [type]="hidePass() ? 'password' : 'text'" formControlName="password" placeholder="Ingresa tu contraseña">
+
+            <!-- Botón personalizado 'MOSTRAR' en el matSuffix -->
+            <div matSuffix class="password-toggle" (click)="togglePass()">
+              <mat-icon class="toggle-icon">{{hidePass() ? 'visibility_off' : 'visibility'}}</mat-icon>
+              <span class="toggle-text">{{hidePass() ? 'MOSTRAR' : 'OCULTAR'}}</span>
+            </div>
+          </mat-form-field>
+        </mat-card-content>
+
+        <!-- Botón principal 'ACCEDER' personalizado -->
+        <div class="auth-actions">
+          <button mat-flat-button class="submit-button" type="submit" [disabled]="loginForm.invalid">
+            Ingresar
+          </button>
+        </div>
+
+        <!-- Enlace secundario inferior -->
+        <div class="secondary-link">
+          <a routerLink="/auth/register">No tienes una cuenta? Registrate</a>
+        </div>
+
+      </form>
+    </mat-card>
+  </div>
+</div>

@@ -6,3 +6,8 @@ export interface UserRegisterInterface {
   first_name: string;
   last_name: string;
 }
+
+export interface UserLoginInterface {
+  username: string;
+  password: string;
+}
