@@ -2,6 +2,8 @@ import { Component, signal } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { UserLoginInterface } from '../../../models/auth';
 import { Auth } from '../../../service/auth/auth';
+import { TokenService } from '../../../service/auth/token';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-login',
@@ -17,7 +19,9 @@ export class Login {
 
   constructor(
     private fb: FormBuilder,
-    private authService: Auth
+    private authService: Auth,
+    private tokenService: TokenService,
+    private router: Router,
   ) {
     this.loginForm = this.fb.group({
       username: ['', [Validators.required, Validators.minLength(3)]],
@@ -37,8 +41,8 @@ export class Login {
     this.authService.loginUser(userLogin).subscribe(
       (value) => {
         if (value) {
-          // TODO implementar guardado de token en el local storage
-          console.log("Logeado");
+          this.tokenService.set(value.token);
+          this.router.navigate(["/users"])
         }
       }, (error) => {
         console.error("Error en login")
