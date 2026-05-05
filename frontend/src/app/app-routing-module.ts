@@ -7,6 +7,10 @@ const routes: Routes = [
     loadChildren: () => import('./components/auth/auth-module').then(m => m.AuthModule)
   },
   {
+    path: 'users',
+    loadChildren: () => import('./components/users-manager/users-manager-module').then(m => m.UsersManagerModule)
+  },
+  {
     path: '',
     redirectTo: '/auth/register',
     pathMatch: 'full'

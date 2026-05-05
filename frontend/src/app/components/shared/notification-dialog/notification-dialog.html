@@ -1,0 +1,12 @@
+<div class="notification-header" [ngClass]="data.type">
+  <mat-icon class="notification-icon" aria-hidden="true">{{ icon }}</mat-icon>
+  <h2 mat-dialog-title class="notification-title">{{ data.title }}</h2>
+</div>
+
+<mat-dialog-content>
+  <p class="notification-message">{{ data.message }}</p>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="close()">Cerrar</button>
+</mat-dialog-actions>

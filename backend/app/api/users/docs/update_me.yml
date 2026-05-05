@@ -1,0 +1,77 @@
+tags:
+  - Users
+summary: Actualiza parcialmente el usuario autenticado
+description: >
+  Actualiza solo los campos enviados en el body. El usuario se identifica
+  a partir del JWT (claim `identity` = user_id). No se permite cambiar
+  password, _id, is_active ni created_at por este endpoint.
+security:
+  - Bearer: []
+consumes:
+  - application/json
+produces:
+  - application/json
+parameters:
+  - in: body
+    name: body
+    required: true
+    description: Campos a actualizar (todos opcionales, al menos uno requerido)
+    schema:
+      type: object
+      additionalProperties: false
+      properties:
+        username:
+          type: string
+          minLength: 3
+          example: "juan_perez"
+        email:
+          type: string
+          format: email
+          example: "juan@example.com"
+        age:
+          type: integer
+          minimum: 0
+          maximum: 150
+          example: 28
+        first_name:
+          type: string
+          example: "Juan"
+        last_name:
+          type: string
+          example: "Pérez"
+        bio:
+          type: string
+          maxLength: 500
+          example: "Backend dev, Mongo enthusiast"
+responses:
+  200:
+    description: Usuario actualizado correctamente
+    schema:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
+        user:
+          type: object
+  400:
+    description: Error de validación o conflicto (username/email en uso)
+    schema:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: false
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+  401:
+    description: Token JWT ausente o inválido
+  404:
+    description: Usuario no encontrado

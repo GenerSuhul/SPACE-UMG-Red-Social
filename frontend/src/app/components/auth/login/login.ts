@@ -4,6 +4,9 @@ import { UserLoginInterface } from '../../../models/auth';
 import { Auth } from '../../../service/auth/auth';
 import { TokenService } from '../../../service/auth/token';
 import { Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { NotificationDialog } from '../../shared/notification-dialog/notification-dialog';
+import { NotificationDialogData } from '../../shared/notification-dialog/notification-dialog.model';
 
 @Component({
   selector: 'app-login',
@@ -22,6 +25,7 @@ export class Login {
     private authService: Auth,
     private tokenService: TokenService,
     private router: Router,
+    private dialog: MatDialog,
   ) {
     this.loginForm = this.fb.group({
       username: ['', [Validators.required, Validators.minLength(3)]],
@@ -45,7 +49,11 @@ export class Login {
           this.router.navigate(["/users"])
         }
       }, (error) => {
-        console.error("Error en login")
+        const message: string = error?.error?.message ?? 'Ocurrió un error inesperado.';
+        this.dialog.open<NotificationDialog, NotificationDialogData>(NotificationDialog, {
+          data: { type: 'error', title: 'Error', message },
+          width: '400px',
+        });
       }
     )
   }
