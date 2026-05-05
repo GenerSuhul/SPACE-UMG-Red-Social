@@ -15,4 +15,17 @@ export class TokenService {
   clear(): void {
     localStorage.removeItem(TOKEN_KEY);
   }
+
+  /** Decodes the JWT payload and returns the `sub` claim (user_id), or null if absent/invalid. */
+  getCurrentUserId(): string | null {
+    const token = this.get();
+    if (!token) return null;
+    try {
+      const payload = token.split('.')[1];
+      const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+      return decoded.sub ?? null;
+    } catch {
+      return null;
+    }
+  }
 }

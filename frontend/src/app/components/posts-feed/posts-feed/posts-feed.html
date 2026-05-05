@@ -1,0 +1,110 @@
+<div class="feed-wrapper">
+
+  <!-- Header bar -->
+  <div class="feed-header">
+    <h1 class="feed-title">
+      <mat-icon aria-hidden="true">dynamic_feed</mat-icon>
+      Feed
+    </h1>
+    <button
+      mat-raised-button
+      color="primary"
+      (click)="toggleNewPostForm()"
+      [attr.aria-expanded]="showNewPostForm()">
+      <mat-icon>{{ showNewPostForm() ? 'close' : 'add' }}</mat-icon>
+      {{ showNewPostForm() ? 'Cancelar' : 'Nueva publicacion' }}
+    </button>
+  </div>
+
+  <!-- New post form -->
+  <mat-card *ngIf="showNewPostForm()" class="new-post-card">
+    <mat-card-header>
+      <mat-card-title>Crear publicacion</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <form [formGroup]="newPostForm" (ngSubmit)="submitNewPost()" novalidate>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Que quieres compartir?</mat-label>
+          <textarea
+            matInput
+            formControlName="content"
+            rows="4"
+            placeholder="Escribe tu publicacion..."
+            aria-label="Contenido de la publicacion">
+          </textarea>
+          <mat-error *ngIf="newPostForm.get('content')?.hasError('required')">
+            El contenido es obligatorio.
+          </mat-error>
+          <mat-error *ngIf="newPostForm.get('content')?.hasError('maxlength')">
+            Maximo 5000 caracteres.
+          </mat-error>
+        </mat-form-field>
+
+        <div class="form-actions">
+          <button
+            mat-raised-button
+            color="primary"
+            type="submit"
+            [disabled]="creatingPost() || newPostForm.invalid">
+            <mat-spinner *ngIf="creatingPost()" diameter="18" class="inline-spinner"></mat-spinner>
+            <span *ngIf="!creatingPost()">Publicar</span>
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Loading state -->
+  <div *ngIf="loadingFeed()" class="state-center" role="status" aria-label="Cargando publicaciones">
+    <mat-spinner diameter="48"></mat-spinner>
+    <p>Cargando publicaciones...</p>
+  </div>
+
+  <!-- Error state -->
+  <div *ngIf="feedError() && !loadingFeed()" class="state-center error-state" role="alert">
+    <mat-icon color="warn">error_outline</mat-icon>
+    <p>{{ feedError() }}</p>
+    <button mat-stroked-button color="primary" (click)="loadPosts(currentPage)">
+      Reintentar
+    </button>
+  </div>
+
+  <!-- Empty state -->
+  <div *ngIf="!loadingFeed() && !feedError() && posts().length === 0" class="state-center" role="status">
+    <mat-icon class="empty-icon">inbox</mat-icon>
+    <p>Aun no hay publicaciones. Sé el primero en compartir algo.</p>
+  </div>
+
+  <!-- Posts list -->
+  <div *ngIf="!loadingFeed() && !feedError() && posts().length > 0" class="posts-list">
+    <app-post-item
+      *ngFor="let post of posts(); trackBy: trackByPostId"
+      [post]="post"
+      (postDeleted)="onPostDeleted($event)">
+    </app-post-item>
+  </div>
+
+  <!-- Pagination -->
+  <div *ngIf="!loadingFeed() && totalPages > 1" class="pagination-row" role="navigation" aria-label="Paginacion">
+    <button
+      mat-icon-button
+      [disabled]="currentPage === 1"
+      (click)="goToPage(currentPage - 1)"
+      aria-label="Pagina anterior"
+      matTooltip="Pagina anterior">
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+
+    <span class="page-indicator">{{ currentPage }} / {{ totalPages }}</span>
+
+    <button
+      mat-icon-button
+      [disabled]="currentPage === totalPages"
+      (click)="goToPage(currentPage + 1)"
+      aria-label="Pagina siguiente"
+      matTooltip="Pagina siguiente">
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+  </div>
+
+</div>

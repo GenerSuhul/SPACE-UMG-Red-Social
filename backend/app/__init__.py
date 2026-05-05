@@ -81,6 +81,8 @@ def _register_jwt_callbacks() -> None:
 def _register_blueprints(app: Flask) -> None:
     from .api.auth import auth_bp
     from .api.users import user_bp
+    from .api.posts import posts_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(user_bp, url_prefix="/api/users")
+    app.register_blueprint(posts_bp, url_prefix="/api/posts")

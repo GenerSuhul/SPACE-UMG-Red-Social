@@ -1,0 +1,45 @@
+tags:
+  - Reactions
+summary: Reacciona a un comentario
+description: >
+  Crea o actualiza la reacción del usuario sobre un comentario.
+  Mismas reglas que las reacciones a posts (una reacción activa por usuario).
+security:
+  - Bearer: []
+consumes:
+  - application/json
+produces:
+  - application/json
+parameters:
+  - in: path
+    name: post_id
+    type: string
+    required: true
+  - in: path
+    name: comment_id
+    type: string
+    required: true
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required:
+        - reaction_type
+      additionalProperties: false
+      properties:
+        reaction_type:
+          type: string
+          enum: [like, love, haha, wow, sad, angry]
+          example: love
+responses:
+  200:
+    description: Reacción actualizada o sin cambios
+  201:
+    description: Reacción creada
+  400:
+    description: Tipo de reacción inválido
+  404:
+    description: Comentario no encontrado
+  401:
+    description: Token JWT ausente o inválido

@@ -1,0 +1,23 @@
+tags:
+  - Posts
+summary: Elimina un post (solo el autor)
+description: >
+  Elimina el post y, en cascada, todos sus comentarios y reacciones.
+security:
+  - Bearer: []
+produces:
+  - application/json
+parameters:
+  - in: path
+    name: post_id
+    type: string
+    required: true
+responses:
+  200:
+    description: Post eliminado
+  403:
+    description: No autorizado (no eres el autor)
+  404:
+    description: Post no encontrado
+  401:
+    description: Token JWT ausente o inválido

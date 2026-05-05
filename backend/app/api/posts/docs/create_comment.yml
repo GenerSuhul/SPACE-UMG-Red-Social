@@ -1,0 +1,40 @@
+tags:
+  - Comments
+summary: Crea un comentario en un post
+security:
+  - Bearer: []
+consumes:
+  - application/json
+produces:
+  - application/json
+parameters:
+  - in: path
+    name: post_id
+    type: string
+    required: true
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required:
+        - content
+      additionalProperties: false
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          example: "Excelente publicación"
+        parent_comment_id:
+          type: string
+          description: Id del comentario padre (para respuestas anidadas)
+responses:
+  201:
+    description: Comentario creado
+  400:
+    description: Error de validación
+  404:
+    description: Post no encontrado
+  401:
+    description: Token JWT ausente o inválido

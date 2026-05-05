@@ -27,6 +27,10 @@ export class Toolbar {
     this.router.navigate(['/auth/login']);
   }
 
+  goToFeed(): void {
+    this.router.navigate(['/feed'])
+  }
+
   goToUsers(): void {
     this.router.navigate(['/users']);
   }

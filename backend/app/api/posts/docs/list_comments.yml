@@ -1,0 +1,30 @@
+tags:
+  - Comments
+summary: Lista los comentarios de un post
+security:
+  - Bearer: []
+produces:
+  - application/json
+parameters:
+  - in: path
+    name: post_id
+    type: string
+    required: true
+  - in: query
+    name: page
+    type: integer
+    required: false
+    default: 1
+  - in: query
+    name: page_size
+    type: integer
+    required: false
+    default: 50
+    description: Máximo 200
+responses:
+  200:
+    description: Lista de comentarios
+  400:
+    description: Id de post inválido
+  401:
+    description: Token JWT ausente o inválido

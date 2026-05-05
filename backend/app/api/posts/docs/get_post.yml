@@ -1,0 +1,30 @@
+tags:
+  - Posts
+summary: Obtiene un post con sus comentarios
+security:
+  - Bearer: []
+produces:
+  - application/json
+parameters:
+  - in: path
+    name: post_id
+    type: string
+    required: true
+responses:
+  200:
+    description: Post encontrado
+    schema:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        post:
+          type: object
+        comments:
+          type: array
+          items:
+            type: object
+  404:
+    description: Post no encontrado
+  401:
+    description: Token JWT ausente o inválido

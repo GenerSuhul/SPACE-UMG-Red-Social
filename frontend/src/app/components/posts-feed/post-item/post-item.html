@@ -1,0 +1,281 @@
+<mat-card class="post-card" [class.post-card--expanded]="expanded()">
+
+  <!-- Post header -->
+  <mat-card-header class="post-header">
+    <mat-icon mat-card-avatar class="author-avatar" aria-hidden="true">account_circle</mat-icon>
+    <mat-card-title class="author-name">
+      @{{ post.author_username }}
+    </mat-card-title>
+    <mat-card-subtitle>{{ formatDate(post.created_at) }}</mat-card-subtitle>
+
+    <!-- Post menu — only visible to the post author -->
+    <button
+      *ngIf="isOwner(post.author_id)"
+      mat-icon-button
+      class="post-menu-btn"
+      [matMenuTriggerFor]="postMenu"
+      aria-label="Opciones de la publicacion">
+      <mat-icon>more_vert</mat-icon>
+    </button>
+    <mat-menu #postMenu="matMenu">
+      <button mat-menu-item (click)="deletePost()" [disabled]="deletingPost()">
+        <mat-icon color="warn">delete</mat-icon>
+        <span>Eliminar publicacion</span>
+      </button>
+    </mat-menu>
+  </mat-card-header>
+
+  <!-- Post content -->
+  <mat-card-content class="post-content">
+    <p class="content-text">{{ post.content }}</p>
+
+    <!-- Media thumbnails -->
+    <div *ngIf="post.media_urls.length > 0" class="media-row">
+      <a
+        *ngFor="let url of post.media_urls"
+        [href]="url"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="media-link"
+        aria-label="Ver archivo adjunto">
+        <mat-icon>attach_file</mat-icon>
+        <span class="media-url-text">{{ url }}</span>
+      </a>
+    </div>
+  </mat-card-content>
+
+  <!-- Reaction summary bar -->
+  <div class="reaction-summary" *ngIf="totalReactions > 0">
+    <mat-icon class="reaction-icon" aria-hidden="true">thumb_up</mat-icon>
+    <span class="reaction-text">{{ reactionSummary }}</span>
+  </div>
+
+  <mat-divider></mat-divider>
+
+  <!-- Action bar -->
+  <mat-card-actions class="action-bar">
+
+    <!-- Reaction buttons -->
+    <div class="reaction-group" role="group" aria-label="Reaccionar a la publicacion">
+      <button
+        *ngFor="let opt of reactionOptions"
+        mat-button
+        class="reaction-btn"
+        [matTooltip]="opt.label"
+        [disabled]="reactingToPost()"
+        (click)="reactToPost(opt.type)"
+        [attr.aria-label]="opt.label">
+        {{ opt.emoji }}
+        <span class="reaction-count">{{ post.reactions_count[opt.type] > 0 ? post.reactions_count[opt.type] : '' }}</span>
+      </button>
+    </div>
+
+    <!-- Expand / collapse toggle -->
+    <button
+      mat-button
+      class="expand-btn"
+      (click)="toggleExpanded()"
+      [attr.aria-expanded]="expanded()"
+      aria-controls="comments-section-{{ post.id }}">
+      <mat-icon>{{ expanded() ? 'expand_less' : 'expand_more' }}</mat-icon>
+      {{ post.comments_count }} comentario{{ post.comments_count !== 1 ? 's' : '' }}
+    </button>
+
+  </mat-card-actions>
+
+  <!-- Comments section — loaded on first expand -->
+  <div
+    id="comments-section-{{ post.id }}"
+    class="comments-section"
+    *ngIf="expanded()"
+    role="region"
+    aria-label="Comentarios de la publicacion">
+
+    <!-- Loading comments -->
+    <div *ngIf="loadingDetails()" class="details-loading" role="status" aria-label="Cargando comentarios">
+      <mat-spinner diameter="32"></mat-spinner>
+      <span>Cargando comentarios...</span>
+    </div>
+
+    <!-- Error loading comments -->
+    <div *ngIf="detailsError() && !loadingDetails()" class="details-error" role="alert">
+      <mat-icon color="warn">warning</mat-icon>
+      <span>{{ detailsError() }}</span>
+      <button mat-stroked-button color="primary" (click)="retryLoadDetails()">Reintentar</button>
+    </div>
+
+    <!-- Comments list -->
+    <div *ngIf="detailsLoaded() && !loadingDetails()" class="comments-list">
+
+      <!-- Empty comments state -->
+      <p *ngIf="comments().length === 0" class="no-comments-text">Sin comentarios. Se el primero.</p>
+
+      <!-- Each top-level comment -->
+      <div
+        *ngFor="let comment of comments(); trackBy: trackByCommentId"
+        class="comment-item">
+
+        <div class="comment-header">
+          <mat-icon class="comment-avatar" aria-hidden="true">account_circle</mat-icon>
+          <div class="comment-meta">
+            <span class="comment-author">
+              @{{ comment.author_username }}
+            </span>
+            <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
+          </div>
+          <div class="comment-actions">
+            <button
+              mat-icon-button
+              [matTooltip]="'Responder'"
+              (click)="setReplyTarget(comment.id)"
+              aria-label="Responder a este comentario">
+              <mat-icon>reply</mat-icon>
+            </button>
+            <button
+              *ngIf="isOwner(comment.author_id)"
+              mat-icon-button
+              [matTooltip]="'Eliminar comentario'"
+              (click)="deleteComment(comment.id, null)"
+              aria-label="Eliminar comentario">
+              <mat-icon color="warn">delete_outline</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        <p class="comment-content">{{ comment.content }}</p>
+
+        <div *ngIf="getCommentReactionSummary(comment)" class="comment-reaction-summary">
+          <mat-icon aria-hidden="true" class="small-icon">favorite</mat-icon>
+          <span>{{ getCommentReactionSummary(comment) }}</span>
+        </div>
+
+        <!-- Ver respuestas button -->
+        <div class="replies-toggle-row">
+          <button
+            mat-button
+            class="replies-toggle-btn"
+            (click)="toggleReplies(comment.id)"
+            [attr.aria-expanded]="replyState(comment.id).expanded()"
+            [attr.aria-controls]="'replies-' + comment.id">
+            <mat-icon>{{ replyState(comment.id).expanded() ? 'expand_less' : 'expand_more' }}</mat-icon>
+            <span *ngIf="!replyState(comment.id).expanded()">Ver respuestas</span>
+            <span *ngIf="replyState(comment.id).expanded()">Ocultar respuestas</span>
+          </button>
+        </div>
+
+        <!-- Replies panel — lazy loaded on first toggle -->
+        <div
+          [id]="'replies-' + comment.id"
+          class="replies-section"
+          *ngIf="replyState(comment.id).expanded()"
+          role="region"
+          [attr.aria-label]="'Respuestas al comentario de ' + comment.author_username">
+
+          <!-- Loading replies -->
+          <div *ngIf="replyState(comment.id).loading()" class="replies-loading" role="status">
+            <mat-spinner diameter="20"></mat-spinner>
+            <span>Cargando respuestas...</span>
+          </div>
+
+          <!-- Error loading replies -->
+          <div *ngIf="replyState(comment.id).error() && !replyState(comment.id).loading()" class="replies-error" role="alert">
+            <mat-icon color="warn">warning</mat-icon>
+            <span>{{ replyState(comment.id).error() }}</span>
+            <button mat-button color="primary" (click)="retryLoadReplies(comment.id)">Reintentar</button>
+          </div>
+
+          <!-- Replies list -->
+          <div *ngIf="replyState(comment.id).loaded() && !replyState(comment.id).loading()" class="replies-list">
+
+            <p *ngIf="replyState(comment.id).replies().length === 0" class="no-replies-text">
+              Sin respuestas aun.
+            </p>
+
+            <div
+              *ngFor="let reply of replyState(comment.id).replies(); trackBy: trackByCommentId"
+              class="comment-item comment-item--reply">
+
+              <div class="comment-header">
+                <mat-icon class="comment-avatar" aria-hidden="true">account_circle</mat-icon>
+                <div class="comment-meta">
+                  <span class="comment-author">@{{ reply.author_username }}</span>
+                  <span class="comment-date">{{ formatDate(reply.created_at) }}</span>
+                  <!-- <span class="reply-badge">
+                    <mat-icon aria-hidden="true">subdirectory_arrow_right</mat-icon>Respuesta
+                  </span> -->
+                </div>
+                <div class="comment-actions">
+                  <button
+                    *ngIf="isOwner(reply.author_id)"
+                    mat-icon-button
+                    [matTooltip]="'Eliminar respuesta'"
+                    (click)="deleteComment(reply.id, comment.id)"
+                    aria-label="Eliminar respuesta">
+                    <mat-icon color="warn">delete_outline</mat-icon>
+                  </button>
+                </div>
+              </div>
+
+              <p class="comment-content">{{ reply.content }}</p>
+
+              <div *ngIf="getCommentReactionSummary(reply)" class="comment-reaction-summary">
+                <mat-icon aria-hidden="true" class="small-icon">favorite</mat-icon>
+                <span>{{ getCommentReactionSummary(reply) }}</span>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+        <!-- end replies panel -->
+
+        <mat-divider></mat-divider>
+      </div>
+      <!-- end top-level comment loop -->
+
+    </div>
+
+    <!-- Add comment form -->
+    <div class="add-comment-area" *ngIf="detailsLoaded() && !loadingDetails()">
+
+      <div *ngIf="replyingToId()" class="reply-indicator">
+        <mat-icon aria-hidden="true">subdirectory_arrow_right</mat-icon>
+        <span>Respondiendo a comentario</span>
+        <button mat-icon-button (click)="setReplyTarget(null)" aria-label="Cancelar respuesta" matTooltip="Cancelar">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <form [formGroup]="commentForm" (ngSubmit)="submitComment()" novalidate class="comment-form">
+        <mat-form-field appearance="outline" class="comment-field">
+          <mat-label>{{ replyingToId() ? 'Escribe tu respuesta...' : 'Escribe un comentario...' }}</mat-label>
+          <textarea
+            matInput
+            formControlName="content"
+            rows="2"
+            [attr.aria-label]="replyingToId() ? 'Respuesta' : 'Nuevo comentario'">
+          </textarea>
+          <mat-error *ngIf="commentForm.get('content')?.hasError('required')">
+            El comentario no puede estar vacio.
+          </mat-error>
+          <mat-error *ngIf="commentForm.get('content')?.hasError('maxlength')">
+            Maximo 2000 caracteres.
+          </mat-error>
+        </mat-form-field>
+
+        <button
+          mat-raised-button
+          color="accent"
+          type="submit"
+          [disabled]="submittingComment() || commentForm.invalid"
+          aria-label="Enviar comentario">
+          <mat-spinner *ngIf="submittingComment()" diameter="16" class="inline-spinner"></mat-spinner>
+          <mat-icon *ngIf="!submittingComment()">send</mat-icon>
+          <span>{{ submittingComment() ? '' : 'Comentar' }}</span>
+        </button>
+      </form>
+    </div>
+
+  </div>
+</mat-card>

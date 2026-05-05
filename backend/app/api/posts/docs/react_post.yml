@@ -1,0 +1,42 @@
+tags:
+  - Reactions
+summary: Reacciona a un post
+description: >
+  Crea o actualiza la reacción del usuario autenticado sobre un post.
+  Cada usuario solo puede tener UNA reacción activa por post — si ya existe,
+  el tipo se reemplaza y los contadores se ajustan.
+security:
+  - Bearer: []
+consumes:
+  - application/json
+produces:
+  - application/json
+parameters:
+  - in: path
+    name: post_id
+    type: string
+    required: true
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      required:
+        - reaction_type
+      additionalProperties: false
+      properties:
+        reaction_type:
+          type: string
+          enum: [like, love, haha, wow, sad, angry]
+          example: like
+responses:
+  200:
+    description: Reacción actualizada o sin cambios
+  201:
+    description: Reacción creada
+  400:
+    description: Tipo de reacción inválido
+  404:
+    description: Post no encontrado
+  401:
+    description: Token JWT ausente o inválido

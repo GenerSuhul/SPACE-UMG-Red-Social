@@ -1,0 +1,27 @@
+tags:
+  - Comments
+summary: Elimina un comentario
+description: >
+  Solo el autor del comentario o el autor del post pueden eliminarlo.
+security:
+  - Bearer: []
+produces:
+  - application/json
+parameters:
+  - in: path
+    name: post_id
+    type: string
+    required: true
+  - in: path
+    name: comment_id
+    type: string
+    required: true
+responses:
+  200:
+    description: Comentario eliminado
+  403:
+    description: No autorizado
+  404:
+    description: Comentario no encontrado
+  401:
+    description: Token JWT ausente o inválido

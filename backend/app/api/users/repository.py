@@ -31,6 +31,20 @@ class UserRepository:
             return None
 
     @staticmethod
+    def find_many_usernames(user_ids: list) -> dict:
+        """Batch lookup ligero. Devuelve {str(_id): username}."""
+        try:
+            oids = [ObjectId(uid) for uid in user_ids]
+            cursor = mongo.db.users.find(
+                {"_id": {"$in": oids}},
+                {"username": 1},
+            )
+            return {str(u["_id"]): u.get("username", "") for u in cursor}
+        except Exception as ex:
+            print(f"Error finding usernames by ids: {ex}")
+            return {}
+
+    @staticmethod
     def update_by_id(user_id: str, update_fields: dict) -> dict | None:
         """
         Actualiza solo los campos enviados (update parcial).

@@ -1,6 +1,7 @@
 # app/config.py
 import os
 from dataclasses import dataclass, field
+from datetime import timedelta
 
 @dataclass
 class BaseConfig:
@@ -12,11 +13,9 @@ class BaseConfig:
     MONGO_URI: str      = f"mongodb://{_username_db}:{_password_db}@{_host_db}:{_port_db}/{_name_db}?authSource=admin"
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "change-me")
 
-    # Blocklist de JWT — habilitada para soportar logout con revocación de token.
-    # El callback `token_in_blocklist_loader` se registra en app/__init__.py y
-    # consulta la colección `token_blocklist` en MongoDB.
-    JWT_BLACKLIST_ENABLED: bool         = True
-    JWT_BLACKLIST_TOKEN_CHECKS: list    = field(default_factory=lambda: ["access"])
+    # Token válido 24 h. El logout lo invalida antes de tiempo via blocklist
+    # (callback token_in_blocklist_loader registrado en app/__init__.py).
+    JWT_ACCESS_TOKEN_EXPIRES: timedelta = timedelta(hours=24)
 
     DEBUG: bool = False
     TESTING: bool = False
