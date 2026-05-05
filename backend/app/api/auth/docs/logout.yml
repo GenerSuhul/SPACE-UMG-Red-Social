@@ -1,0 +1,30 @@
+tags:
+  - Auth
+consumes:
+  - application/json
+produces:
+  - application/json
+security:
+  - Bearer: []
+parameters:
+  - in: header
+    name: Authorization
+    required: true
+    type: string
+    description: "Token JWT del usuario autenticado. Formato: Bearer {token}"
+responses:
+  200:
+    description: Sesión cerrada exitosamente
+    schema:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Sesión cerrada exitosamente"
+  401:
+    description: Token inválido, expirado o ya revocado
+  400:
+    description: Error al revocar el token

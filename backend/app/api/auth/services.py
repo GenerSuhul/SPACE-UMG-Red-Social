@@ -89,3 +89,20 @@ class AuthService:
                 "last_name":  user["last_name"],
             }
         }
+
+
+    @staticmethod
+    def logout(jti: str, user_id: str | None = None) -> dict:
+        """
+        Revoca el token actual añadiendo su JTI a la blocklist.
+        El JTI y user_id deben extraerse en la capa de routes con
+        get_jwt() / get_jwt_identity() antes de invocar este método.
+        """
+        if not jti:
+            return {"ok": False, "errors": [{"field": "token", "message": "JTI not found in token"}]}
+
+        revoked = AuthRepository.revoke_token(jti, user_id)
+        if not revoked:
+            return {"ok": False, "errors": [{"field": "database", "message": "Error revoking token"}]}
+
+        return {"ok": True}

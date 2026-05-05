@@ -57,6 +57,26 @@ def _init_extensions(app: Flask) -> None:
         }
     })
 
+    _register_jwt_callbacks()
+
+
+def _register_jwt_callbacks() -> None:
+    """
+    Registra los callbacks de flask-jwt-extended.
+    Se llama en cada request — `mongo.db` ya está disponible vía
+    el contexto de aplicación que provee Flask.
+    """
+    from .api.auth.repository import AuthRepository
+
+    @jwt.token_in_blocklist_loader
+    def check_if_token_revoked(jwt_header, jwt_payload) -> bool:
+        """
+        Devuelve True si el JTI del token está en la blocklist.
+        flask-jwt-extended responderá 401 automáticamente en ese caso.
+        """
+        jti = jwt_payload["jti"]
+        return AuthRepository.is_token_revoked(jti)
+
 
 def _register_blueprints(app: Flask) -> None:
     from .api.auth import auth_bp

@@ -11,6 +11,13 @@ class BaseConfig:
     _port_db: str       = os.getenv("MONGO_DB_PORT", "27017")
     MONGO_URI: str      = f"mongodb://{_username_db}:{_password_db}@{_host_db}:{_port_db}/{_name_db}?authSource=admin"
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "change-me")
+
+    # Blocklist de JWT — habilitada para soportar logout con revocación de token.
+    # El callback `token_in_blocklist_loader` se registra en app/__init__.py y
+    # consulta la colección `token_blocklist` en MongoDB.
+    JWT_BLACKLIST_ENABLED: bool         = True
+    JWT_BLACKLIST_TOKEN_CHECKS: list    = field(default_factory=lambda: ["access"])
+
     DEBUG: bool = False
     TESTING: bool = False
 

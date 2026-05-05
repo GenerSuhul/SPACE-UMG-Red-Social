@@ -10,6 +10,7 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatToolbarModule } from '@angular/material/toolbar';
 
 const materialModules = [
   MatCardModule,
@@ -21,6 +22,7 @@ const materialModules = [
   MatSlideToggleModule,
   MatProgressSpinnerModule,
   MatDividerModule,
+  MatToolbarModule,
 ];
 
 @NgModule({

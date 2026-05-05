@@ -1,0 +1,14 @@
+:host {
+  display: block;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.app-title {
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  margin-left: 4px;
+}

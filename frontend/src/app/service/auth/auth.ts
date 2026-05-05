@@ -24,4 +24,9 @@ export class Auth {
     const url = `${this.configService.appConfig.apiUrl}/auth/login`
     return this.http.post<any>(url, userLogin);
   }
+
+  logoutUser(): Observable<any> {
+    const url = `${this.configService.appConfig.apiUrl}/auth/logout`
+    return this.http.post<any>(url, {});
+  }
 }
