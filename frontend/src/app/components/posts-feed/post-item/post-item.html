@@ -44,30 +44,36 @@
     </div>
   </mat-card-content>
 
-  <!-- Reaction summary bar -->
-  <div class="reaction-summary" *ngIf="totalReactions > 0">
-    <mat-icon class="reaction-icon" aria-hidden="true">thumb_up</mat-icon>
-    <span class="reaction-text">{{ reactionSummary }}</span>
-  </div>
-
   <mat-divider></mat-divider>
 
   <!-- Action bar -->
   <mat-card-actions class="action-bar">
 
-    <!-- Reaction buttons -->
+    <!-- Reaction button (MatMenu picker) -->
     <div class="reaction-group" role="group" aria-label="Reaccionar a la publicacion">
       <button
-        *ngFor="let opt of reactionOptions"
         mat-button
-        class="reaction-btn"
-        [matTooltip]="opt.label"
+        class="comment-react-btn"
+        [class.comment-react-btn--active]="myPostReaction() !== null"
         [disabled]="reactingToPost()"
-        (click)="reactToPost(opt.type)"
-        [attr.aria-label]="opt.label">
-        {{ opt.emoji }}
-        <span class="reaction-count">{{ post.reactions_count[opt.type] > 0 ? post.reactions_count[opt.type] : '' }}</span>
+        [matMenuTriggerFor]="postReactionMenu"
+        [attr.aria-label]="myPostReaction() ? 'Cambiar reacción' : 'Reaccionar'">
+        <span class="react-emoji">{{ myPostReaction() ? reactionByType(myPostReaction()!).emoji : '👍' }}</span>
+        <span class="react-label">{{ myPostReaction() ? reactionByType(myPostReaction()!).label : 'Reaccionar' }}</span>
       </button>
+      <mat-menu #postReactionMenu="matMenu" class="reaction-picker-menu">
+        <button
+          *ngFor="let opt of reactionOptions"
+          mat-menu-item
+          class="reaction-menu-item"
+          [class.reaction-menu-item--active]="myPostReaction() === opt.type"
+          (click)="reactToPost(opt.type)">
+          <span class="menu-emoji">{{ opt.emoji }}</span>
+          <span>{{ opt.label }}</span>
+          <span *ngIf="post.reactions_count[opt.type] > 0" class="menu-count">({{ post.reactions_count[opt.type] }})</span>
+        </button>
+      </mat-menu>
+      <span *ngIf="totalReactions > 0" class="comment-reaction-count">{{ reactionSummary }}</span>
     </div>
 
     <!-- Expand / collapse toggle -->
@@ -144,9 +150,33 @@
 
         <p class="comment-content">{{ comment.content }}</p>
 
-        <div *ngIf="getCommentReactionSummary(comment)" class="comment-reaction-summary">
-          <mat-icon aria-hidden="true" class="small-icon">favorite</mat-icon>
-          <span>{{ getCommentReactionSummary(comment) }}</span>
+        <!-- Interactive reactions for top-level comment -->
+        <div class="comment-reaction-area">
+          <button
+            mat-button
+            class="comment-react-btn"
+            [class.comment-react-btn--active]="myCommentReaction(comment.id) !== null"
+            [disabled]="isReactingToComment(comment.id)"
+            [matMenuTriggerFor]="commentReactionMenu"
+            [attr.aria-label]="myCommentReaction(comment.id) ? 'Cambiar reacción' : 'Reaccionar'">
+            <span class="react-emoji">{{ myCommentReaction(comment.id) ? reactionByType(myCommentReaction(comment.id)!).emoji : '👍' }}</span>
+            <span class="react-label">{{ myCommentReaction(comment.id) ? reactionByType(myCommentReaction(comment.id)!).label : 'Reaccionar' }}</span>
+          </button>
+          <mat-menu #commentReactionMenu="matMenu" class="reaction-picker-menu">
+            <button
+              *ngFor="let opt of reactionOptions"
+              mat-menu-item
+              class="reaction-menu-item"
+              [class.reaction-menu-item--active]="myCommentReaction(comment.id) === opt.type"
+              (click)="reactToComment(comment.id, opt.type)">
+              <span class="menu-emoji">{{ opt.emoji }}</span>
+              <span>{{ opt.label }}</span>
+              <span *ngIf="comment.reactions_count[opt.type] > 0" class="menu-count">({{ comment.reactions_count[opt.type] }})</span>
+            </button>
+          </mat-menu>
+          <span *ngIf="getCommentReactionSummary(comment)" class="comment-reaction-count">
+            {{ getCommentReactionSummary(comment) }}
+          </span>
         </div>
 
         <!-- Ver respuestas button -->
@@ -218,9 +248,33 @@
 
               <p class="comment-content">{{ reply.content }}</p>
 
-              <div *ngIf="getCommentReactionSummary(reply)" class="comment-reaction-summary">
-                <mat-icon aria-hidden="true" class="small-icon">favorite</mat-icon>
-                <span>{{ getCommentReactionSummary(reply) }}</span>
+              <!-- Interactive reactions for reply -->
+              <div class="comment-reaction-area">
+                <button
+                  mat-button
+                  class="comment-react-btn"
+                  [class.comment-react-btn--active]="myCommentReaction(reply.id) !== null"
+                  [disabled]="isReactingToComment(reply.id)"
+                  [matMenuTriggerFor]="replyReactionMenu"
+                  [attr.aria-label]="myCommentReaction(reply.id) ? 'Cambiar reacción' : 'Reaccionar'">
+                  <span class="react-emoji">{{ myCommentReaction(reply.id) ? reactionByType(myCommentReaction(reply.id)!).emoji : '👍' }}</span>
+                  <span class="react-label">{{ myCommentReaction(reply.id) ? reactionByType(myCommentReaction(reply.id)!).label : 'Reaccionar' }}</span>
+                </button>
+                <mat-menu #replyReactionMenu="matMenu" class="reaction-picker-menu">
+                  <button
+                    *ngFor="let opt of reactionOptions"
+                    mat-menu-item
+                    class="reaction-menu-item"
+                    [class.reaction-menu-item--active]="myCommentReaction(reply.id) === opt.type"
+                    (click)="reactToComment(reply.id, opt.type, comment.id)">
+                    <span class="menu-emoji">{{ opt.emoji }}</span>
+                    <span>{{ opt.label }}</span>
+                    <span *ngIf="reply.reactions_count[opt.type] > 0" class="menu-count">({{ reply.reactions_count[opt.type] }})</span>
+                  </button>
+                </mat-menu>
+                <span *ngIf="getCommentReactionSummary(reply)" class="comment-reaction-count">
+                  {{ getCommentReactionSummary(reply) }}
+                </span>
               </div>
 
             </div>

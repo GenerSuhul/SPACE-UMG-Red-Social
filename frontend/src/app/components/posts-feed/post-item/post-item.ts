@@ -13,7 +13,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { PostsService } from '../../../service/posts/posts';
 import { TokenService } from '../../../service/auth/token';
-import { Post, Comment, ReactionType } from '../../../models/posts';
+import { Post, Comment, ReactionType, ReactionsCount } from '../../../models/posts';
 
 /** All reaction types with their display emoji and label. */
 export interface ReactionOption {
@@ -23,12 +23,12 @@ export interface ReactionOption {
 }
 
 export const REACTION_OPTIONS: ReactionOption[] = [
-  { type: 'like',  emoji: '', label: 'Me gusta' },
-  { type: 'love',  emoji: '', label: 'Me encanta' },
-  { type: 'haha',  emoji: '', label: 'Jaja' },
-  { type: 'wow',   emoji: '', label: 'Asombro' },
-  { type: 'sad',   emoji: '', label: 'Tristeza' },
-  { type: 'angry', emoji: '', label: 'Enojo' },
+  { type: 'like',  emoji: '👍', label: 'Me gusta' },
+  { type: 'love',  emoji: '❤️', label: 'Me encanta' },
+  { type: 'haha',  emoji: '😂', label: 'Jaja' },
+  { type: 'wow',   emoji: '😮', label: 'Asombro' },
+  { type: 'sad',   emoji: '😢', label: 'Tristeza' },
+  { type: 'angry', emoji: '😡', label: 'Enojo' },
 ];
 
 /** Per-comment state bucket for reply lazy-loading and toggle. */
@@ -75,9 +75,16 @@ export class PostItem {
   submittingComment = signal(false);
   replyingToId = signal<string | null>(null);
 
-  // Reaction state
+  // Post reaction state
   reactingToPost = signal(false);
+  myPostReaction = signal<ReactionType | null>(null);
   deletingPost = signal(false);
+
+  // Per-comment/reply reaction state keyed by comment.id
+  private readonly commentReactionMap = new Map<string, {
+    myReaction: ReturnType<typeof signal<ReactionType | null>>;
+    reacting:   ReturnType<typeof signal<boolean>>;
+  }>();
 
   readonly reactionOptions = REACTION_OPTIONS;
 
@@ -93,6 +100,30 @@ export class PostItem {
     this.commentForm = this.fb.group({
       content: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(2000)]],
     });
+  }
+
+  // ---- Comment reaction state accessors ----
+
+  private getOrCreateCommentReactionState(commentId: string) {
+    if (!this.commentReactionMap.has(commentId)) {
+      this.commentReactionMap.set(commentId, {
+        myReaction: signal<ReactionType | null>(null),
+        reacting:   signal(false),
+      });
+    }
+    return this.commentReactionMap.get(commentId)!;
+  }
+
+  myCommentReaction(commentId: string): ReactionType | null {
+    return this.getOrCreateCommentReactionState(commentId).myReaction();
+  }
+
+  isReactingToComment(commentId: string): boolean {
+    return this.getOrCreateCommentReactionState(commentId).reacting();
+  }
+
+  reactionByType(type: ReactionType): ReactionOption {
+    return REACTION_OPTIONS.find(o => o.type === type)!;
   }
 
   // ---- Reply state accessors (create lazily so we never touch Map in template) ----
@@ -255,9 +286,10 @@ export class PostItem {
               state.replies.update(current => current.filter(r => r.id !== commentId));
             }
           } else {
-            // Remove from top-level list and clean up its reply state.
+            // Remove from top-level list and clean up its reply and reaction state.
             this.comments.update(current => current.filter(c => c.id !== commentId));
             this.replyStateMap.delete(commentId);
+            this.commentReactionMap.delete(commentId);
           }
           this.post = { ...this.post, comments_count: Math.max(0, this.post.comments_count - 1) };
           this.snackBar.open('Comentario eliminado.', 'Cerrar', { duration: 2500 });
@@ -273,31 +305,108 @@ export class PostItem {
   reactToPost(type: ReactionType): void {
     if (this.reactingToPost()) return;
     this.reactingToPost.set(true);
+    const prev = this.myPostReaction();
 
-    this.postsService.reactToPost(this.post.id, type)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (res) => {
-          this.reactingToPost.set(false);
-          if (res.action === 'unchanged') return;
-
-          if (res.action === 'created') {
+    if (prev === type) {
+      // Same reaction clicked — toggle it off
+      this.postsService.removePostReaction(this.post.id)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => {
             this.post = {
               ...this.post,
               reactions_count: {
                 ...this.post.reactions_count,
-                [type]: this.post.reactions_count[type] + 1,
+                [type]: Math.max(0, this.post.reactions_count[type] - 1),
               },
             };
-          }
-          // For 'updated' we would need to know the old type — skip for now;
-          // parent can refresh the full feed periodically.
-        },
-        error: () => {
-          this.reactingToPost.set(false);
-          this.snackBar.open('Error al reaccionar.', 'Cerrar', { duration: 3000 });
-        },
-      });
+            this.myPostReaction.set(null);
+            this.reactingToPost.set(false);
+          },
+          error: () => {
+            this.reactingToPost.set(false);
+            this.snackBar.open('Error al quitar la reacción.', 'Cerrar', { duration: 3000 });
+          },
+        });
+    } else {
+      // New reaction or switching from another type
+      this.postsService.reactToPost(this.post.id, type)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
+            this.reactingToPost.set(false);
+            if (res.action === 'unchanged') return;
+            const updated = { ...this.post.reactions_count };
+            if (res.action === 'updated' && prev) {
+              updated[prev] = Math.max(0, updated[prev] - 1);
+            }
+            updated[type] = updated[type] + 1;
+            this.post = { ...this.post, reactions_count: updated };
+            this.myPostReaction.set(type);
+          },
+          error: () => {
+            this.reactingToPost.set(false);
+            this.snackBar.open('Error al reaccionar.', 'Cerrar', { duration: 3000 });
+          },
+        });
+    }
+  }
+
+  // ---- Reactions on comments / replies ----
+
+  reactToComment(commentId: string, type: ReactionType, parentCommentId: string | null = null): void {
+    const state = this.getOrCreateCommentReactionState(commentId);
+    if (state.reacting()) return;
+    state.reacting.set(true);
+    const prev = state.myReaction();
+
+    const patchCount = (rc: ReactionsCount, oldType: ReactionType | null, newType: ReactionType | null): ReactionsCount => {
+      const updated = { ...rc };
+      if (oldType) updated[oldType] = Math.max(0, updated[oldType] - 1);
+      if (newType) updated[newType] = updated[newType] + 1;
+      return updated;
+    };
+
+    const applyToComment = (updater: (rc: ReactionsCount) => ReactionsCount): void => {
+      if (parentCommentId) {
+        const rs = this.replyStateMap.get(parentCommentId);
+        if (rs) rs.replies.update(list => list.map(r => r.id === commentId ? { ...r, reactions_count: updater(r.reactions_count) } : r));
+      } else {
+        this.comments.update(list => list.map(c => c.id === commentId ? { ...c, reactions_count: updater(c.reactions_count) } : c));
+      }
+    };
+
+    if (prev === type) {
+      // Toggle off
+      this.postsService.removeCommentReaction(this.post.id, commentId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => {
+            applyToComment(rc => patchCount(rc, type, null));
+            state.myReaction.set(null);
+            state.reacting.set(false);
+          },
+          error: () => {
+            state.reacting.set(false);
+            this.snackBar.open('Error al quitar la reacción.', 'Cerrar', { duration: 3000 });
+          },
+        });
+    } else {
+      this.postsService.reactToComment(this.post.id, commentId, type)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
+            state.reacting.set(false);
+            if (res.action === 'unchanged') return;
+            applyToComment(rc => patchCount(rc, res.action === 'updated' ? prev : null, type));
+            state.myReaction.set(type);
+          },
+          error: () => {
+            state.reacting.set(false);
+            this.snackBar.open('Error al reaccionar.', 'Cerrar', { duration: 3000 });
+          },
+        });
+    }
   }
 
   // ---- Delete post ----
