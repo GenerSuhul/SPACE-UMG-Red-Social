@@ -73,7 +73,11 @@
           <span *ngIf="post.reactions_count[opt.type] > 0" class="menu-count">({{ post.reactions_count[opt.type] }})</span>
         </button>
       </mat-menu>
-      <span *ngIf="totalReactions > 0" class="comment-reaction-count">{{ reactionSummary }}</span>
+      <ng-container *ngFor="let opt of reactionOptions">
+        <span *ngIf="post.reactions_count[opt.type] > 0" class="post-reaction-chip">
+          {{ opt.emoji }} {{ post.reactions_count[opt.type] }}
+        </span>
+      </ng-container>
     </div>
 
     <!-- Expand / collapse toggle -->
@@ -174,9 +178,11 @@
               <span *ngIf="comment.reactions_count[opt.type] > 0" class="menu-count">({{ comment.reactions_count[opt.type] }})</span>
             </button>
           </mat-menu>
-          <span *ngIf="getCommentReactionSummary(comment)" class="comment-reaction-count">
-            {{ getCommentReactionSummary(comment) }}
-          </span>
+          <ng-container *ngFor="let opt of reactionOptions">
+            <span *ngIf="comment.reactions_count[opt.type] > 0" class="post-reaction-chip">
+              {{ opt.emoji }} {{ comment.reactions_count[opt.type] }}
+            </span>
+          </ng-container>
         </div>
 
         <!-- Ver respuestas button -->
@@ -272,9 +278,11 @@
                     <span *ngIf="reply.reactions_count[opt.type] > 0" class="menu-count">({{ reply.reactions_count[opt.type] }})</span>
                   </button>
                 </mat-menu>
-                <span *ngIf="getCommentReactionSummary(reply)" class="comment-reaction-count">
-                  {{ getCommentReactionSummary(reply) }}
-                </span>
+                <ng-container *ngFor="let opt of reactionOptions">
+                  <span *ngIf="reply.reactions_count[opt.type] > 0" class="post-reaction-chip">
+                    {{ opt.emoji }} {{ reply.reactions_count[opt.type] }}
+                  </span>
+                </ng-container>
               </div>
 
             </div>
