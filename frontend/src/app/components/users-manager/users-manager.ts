@@ -1,8 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 
 import { UsersService } from '../../service/users/users';
+import { UserInterface } from '../../models/users';
 import { NotificationDialog } from '../shared/notification-dialog/notification-dialog';
 import { NotificationDialogData } from '../shared/notification-dialog/notification-dialog.model';
 
@@ -13,32 +14,37 @@ import { NotificationDialogData } from '../shared/notification-dialog/notificati
   styleUrl: './users-manager.css',
 })
 export class UsersManager implements OnInit {
-  loading = true;
+  loading = signal(true);
+  editMode = signal(false);
+  user = signal<UserInterface | null>(null);
 
-  updateForm: FormGroup = this.fb.group({
-    username:   ['', [Validators.required, Validators.minLength(3)]],
-    email:      ['', [Validators.required, Validators.email]],
-    first_name: ['', [Validators.required]],
-    last_name:  ['', [Validators.required]],
-    age:        [null, [Validators.required, Validators.min(18)]],
-    is_active:  [true, [Validators.required]],
-  });
+  updateForm: FormGroup;
 
   constructor(
     private fb: FormBuilder,
     private usersService: UsersService,
     private dialog: MatDialog,
-  ) {}
+  ) {
+    this.updateForm = this.fb.group({
+      username:   ['', [Validators.required, Validators.minLength(3)]],
+      email:      ['', [Validators.required, Validators.email]],
+      first_name: ['', [Validators.required]],
+      last_name:  ['', [Validators.required]],
+      age:        [null, [Validators.required, Validators.min(18)]],
+      is_active:  [true, [Validators.required]],
+    });
+  }
 
   ngOnInit(): void {
-    this.loading = true;
+    this.loading.set(true);
     this.usersService.getUser().subscribe({
       next: (res) => {
+        this.user.set(res.user);
         this.updateForm.patchValue(res.user);
-        this.loading = false;
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
         this.openDialog({
           type: 'error',
           title: 'Error',
@@ -46,6 +52,13 @@ export class UsersManager implements OnInit {
         });
       },
     });
+  }
+
+  toggleEditMode(enabled: boolean): void {
+    this.editMode.set(enabled);
+    if (!enabled) {
+      this.updateForm.patchValue(this.user()!);
+    }
   }
 
   onSubmit(): void {
@@ -56,6 +69,8 @@ export class UsersManager implements OnInit {
 
     this.usersService.updateUser(this.updateForm.value).subscribe({
       next: () => {
+        this.user.set({ ...this.user()!, ...this.updateForm.value });
+        this.editMode.set(false);
         this.openDialog({
           type: 'success',
           title: 'Actualización exitosa',

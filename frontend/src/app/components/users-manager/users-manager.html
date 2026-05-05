@@ -1,93 +1,137 @@
 <div class="page-wrapper">
 
   <!-- Estado de carga -->
-  <div *ngIf="loading" class="state-center">
+  <div *ngIf="loading()" class="state-center">
     <mat-spinner diameter="48"></mat-spinner>
     <p>Cargando perfil...</p>
   </div>
 
-  <!-- Formulario de edición -->
-  <div *ngIf="!loading" class="profile-container">
-
+  <!-- Card -->
+  <div *ngIf="!loading()" class="profile-container">
     <mat-card class="profile-card">
 
+      <!-- Header -->
       <div class="profile-header">
         <mat-icon class="avatar-icon">account_circle</mat-icon>
-        <h2>Editar perfil</h2>
+        <h2 class="full-name">{{ user()?.first_name }} {{ user()?.last_name }}</h2>
+        <p class="username">@{{ user()?.username }}</p>
+
+        <div class="edit-toggle-row">
+          <mat-icon class="toggle-icon">{{ editMode() ? 'edit' : 'visibility' }}</mat-icon>
+          <span class="toggle-label-text">{{ editMode() ? 'Modo edición' : 'Solo lectura' }}</span>
+          <mat-slide-toggle
+            [checked]="editMode()"
+            (change)="toggleEditMode($event.checked)"
+            color="accent">
+          </mat-slide-toggle>
+        </div>
       </div>
 
-      <mat-card-content>
+      <mat-card-content class="card-content">
 
-        <form [formGroup]="updateForm" (ngSubmit)="onSubmit()" novalidate>
+        <!-- MODO VISUALIZACIÓN -->
+        <div *ngIf="!editMode()" class="profile-fields">
 
-          <!-- Username -->
+          <div class="field-row">
+            <mat-icon>person</mat-icon>
+            <div class="field-info">
+              <span class="field-label">Nombre de usuario</span>
+              <span class="field-value">{{ user()?.username }}</span>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <mat-icon>email</mat-icon>
+            <div class="field-info">
+              <span class="field-label">Correo electrónico</span>
+              <span class="field-value">{{ user()?.email }}</span>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <mat-icon>badge</mat-icon>
+            <div class="field-info">
+              <span class="field-label">Nombre</span>
+              <span class="field-value">{{ user()?.first_name }}</span>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <mat-icon>badge</mat-icon>
+            <div class="field-info">
+              <span class="field-label">Apellido</span>
+              <span class="field-value">{{ user()?.last_name }}</span>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <mat-icon>cake</mat-icon>
+            <div class="field-info">
+              <span class="field-label">Edad</span>
+              <span class="field-value">{{ user()?.age }} años</span>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <mat-icon [style.color]="user()?.is_active ? '#2e7d32' : '#c62828'">
+              {{ user()?.is_active ? 'check_circle' : 'cancel' }}
+            </mat-icon>
+            <div class="field-info">
+              <span class="field-label">Estado de cuenta</span>
+              <span class="field-value">{{ user()?.is_active ? 'Activa' : 'Inactiva' }}</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- MODO EDICIÓN -->
+        <form *ngIf="editMode()" [formGroup]="updateForm" (ngSubmit)="onSubmit()" novalidate class="edit-form">
+
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Nombre de usuario</mat-label>
             <input matInput formControlName="username" type="text" autocomplete="username" />
-            <mat-error *ngIf="updateForm.get('username')?.hasError('required')">
-              El nombre de usuario es obligatorio.
-            </mat-error>
-            <mat-error *ngIf="updateForm.get('username')?.hasError('minlength')">
-              Debe tener al menos 3 caracteres.
-            </mat-error>
+            <mat-error *ngIf="updateForm.get('username')?.hasError('required')">El nombre de usuario es obligatorio.</mat-error>
+            <mat-error *ngIf="updateForm.get('username')?.hasError('minlength')">Debe tener al menos 3 caracteres.</mat-error>
           </mat-form-field>
 
-          <!-- Email -->
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Correo electrónico</mat-label>
             <input matInput formControlName="email" type="email" autocomplete="email" />
-            <mat-error *ngIf="updateForm.get('email')?.hasError('required')">
-              El correo es obligatorio.
-            </mat-error>
-            <mat-error *ngIf="updateForm.get('email')?.hasError('email')">
-              Ingresa un correo válido.
-            </mat-error>
+            <mat-error *ngIf="updateForm.get('email')?.hasError('required')">El correo es obligatorio.</mat-error>
+            <mat-error *ngIf="updateForm.get('email')?.hasError('email')">Ingresa un correo válido.</mat-error>
           </mat-form-field>
 
-          <!-- Nombre -->
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Nombre</mat-label>
-            <input matInput formControlName="first_name" type="text" autocomplete="given-name" />
-            <mat-error *ngIf="updateForm.get('first_name')?.hasError('required')">
-              El nombre es obligatorio.
-            </mat-error>
-          </mat-form-field>
+          <div class="form-row-double">
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Nombre</mat-label>
+              <input matInput formControlName="first_name" type="text" autocomplete="given-name" />
+              <mat-error *ngIf="updateForm.get('first_name')?.hasError('required')">El nombre es obligatorio.</mat-error>
+            </mat-form-field>
 
-          <!-- Apellido -->
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Apellido</mat-label>
-            <input matInput formControlName="last_name" type="text" autocomplete="family-name" />
-            <mat-error *ngIf="updateForm.get('last_name')?.hasError('required')">
-              El apellido es obligatorio.
-            </mat-error>
-          </mat-form-field>
+            <mat-form-field appearance="outline" class="half-width">
+              <mat-label>Apellido</mat-label>
+              <input matInput formControlName="last_name" type="text" autocomplete="family-name" />
+              <mat-error *ngIf="updateForm.get('last_name')?.hasError('required')">El apellido es obligatorio.</mat-error>
+            </mat-form-field>
+          </div>
 
-          <!-- Edad -->
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Edad</mat-label>
             <input matInput formControlName="age" type="number" min="18" />
-            <mat-error *ngIf="updateForm.get('age')?.hasError('required')">
-              La edad es obligatoria.
-            </mat-error>
-            <mat-error *ngIf="updateForm.get('age')?.hasError('min')">
-              Debes tener al menos 18 años.
-            </mat-error>
+            <mat-error *ngIf="updateForm.get('age')?.hasError('required')">La edad es obligatoria.</mat-error>
+            <mat-error *ngIf="updateForm.get('age')?.hasError('min')">Debes tener al menos 18 años.</mat-error>
           </mat-form-field>
 
-          <!-- Estado activo -->
           <div class="toggle-row">
-            <label class="toggle-label">Cuenta activa</label>
+            <mat-icon>toggle_on</mat-icon>
+            <span class="toggle-field-label">Cuenta activa</span>
             <mat-slide-toggle formControlName="is_active" color="primary"></mat-slide-toggle>
           </div>
 
-          <!-- Botón de envío -->
           <div class="submit-row">
-            <button
-              mat-raised-button
-              color="primary"
-              type="submit"
-              [disabled]="updateForm.invalid">
-              Actualizar
+            <button mat-button type="button" (click)="toggleEditMode(false)">Cancelar</button>
+            <button mat-raised-button color="primary" type="submit" [disabled]="updateForm.invalid">
+              Guardar cambios
             </button>
           </div>
 
@@ -96,7 +140,6 @@
       </mat-card-content>
 
     </mat-card>
-
   </div>
 
 </div>

@@ -21,19 +21,23 @@ class BaseConfig:
 
 @dataclass
 class DevelopmentConfig(BaseConfig):
-    DEBUG: bool    = True
-
-    # MONGO_URI: str = BaseConfig.vermongo()
+    DEBUG: bool         = True
+    CORS_ORIGINS: list  = field(default_factory=lambda: ["http://localhost:4200"])
 
 @dataclass
 class ProductionConfig(BaseConfig):
-    MONGO_URI: str = os.getenv("MONGO_URI", None)
-    # TODO cuando se despliegue agregar la url del frontent http://www.forntend.com
+    MONGO_URI: str      = os.getenv("MONGO_URI", None)
+    CORS_ORIGINS: list  = field(default_factory=lambda: [
+        origin.strip()
+        for origin in os.getenv("CORS_WHITE_LIST", "").split(",")
+        if origin.strip()
+    ])
 
 @dataclass
 class TestingConfig(BaseConfig):
-    TESTING: bool  = True
-    MONGO_URI: str = "mongodb://localhost:27017/test_db"
+    TESTING: bool       = True
+    MONGO_URI: str      = "mongodb://localhost:27017/test_db"
+    CORS_ORIGINS: list  = field(default_factory=lambda: ["http://localhost:4200"])
 
 config_by_name: dict[str, type] = {
     "development": DevelopmentConfig,

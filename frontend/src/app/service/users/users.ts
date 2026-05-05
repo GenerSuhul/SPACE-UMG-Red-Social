@@ -14,7 +14,7 @@ export class UsersService {
   }
 
   updateUser(data: UserInterface): Observable<any> {
-    const url = `${this.configService.appConfig.apiUrl}/users/update_me`;
+    const url = `${this.configService.appConfig.apiUrl}/api/users/update_me`;
     return this.http.put<any>(url, data);
   }
 }

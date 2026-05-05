@@ -50,15 +50,10 @@ def _init_extensions(app: Flask) -> None:
     swagger.init_app(app)
 
     cors.init_app(app, resources={
-        r"/api/*": {
-            "origins": ["*"],
+        r"/*": {
+            "origins": app.config.get("CORS_ORIGINS", ["*",]),
             "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"]
-        }, 
-        r"/auth/*": {
-            "origins": ["*"],
-            "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type"]
         }
     })
 
