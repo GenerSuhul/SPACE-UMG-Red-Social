@@ -121,6 +121,7 @@
 .follows-stat {
   font-size: 13px;
   white-space: nowrap;
+  color: rgb(255, 255, 255);
 }
 
 .stat-divider {

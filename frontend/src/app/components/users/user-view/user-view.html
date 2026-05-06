@@ -39,7 +39,7 @@
             [matTooltip]="isFollowing() ? 'Dejar de seguir' : 'Seguir'"
           >
             <mat-spinner *ngIf="followLoading()" diameter="18" class="btn-spinner"></mat-spinner>
-            <ng-container *ngIf="!followLoading()">
+            <ng-container *ngIf="!followLoading()" class="follow-btn-text">
               <mat-icon>{{ isFollowing() ? 'person_remove' : 'person_add' }}</mat-icon>
               {{ isFollowing() ? 'Siguiendo' : 'Seguir' }}
             </ng-container>
