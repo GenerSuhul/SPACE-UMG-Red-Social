@@ -46,7 +46,7 @@ export class Login {
       (value) => {
         if (value) {
           this.tokenService.set(value.token);
-          this.router.navigate(["/feed"])
+          this.router.navigate(["/"])
         }
       }, (error) => {
         const message: string = error?.error?.message ?? 'Ocurrió un error inesperado.';

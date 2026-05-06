@@ -113,7 +113,7 @@ export class Toolbar implements OnInit, OnDestroy {
   }
 
   goToFeed(): void {
-    this.router.navigate(['/feed']);
+    this.router.navigate(['/']);
   }
 
   goToMyProfile(): void {

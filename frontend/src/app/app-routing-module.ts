@@ -11,12 +11,12 @@ const routes: Routes = [
     loadChildren: () => import('./components/users/users-module').then(m => m.UsersModule)
   },
   {
-    path: 'feed',
+    path: '',
     loadChildren: () => import('./components/posts-feed/posts-feed-module').then(m => m.PostsFeedModule)
   },
   {
     path: '',
-    redirectTo: '/auth/register',
+    redirectTo: '/auth/login',
     pathMatch: 'full'
   }];
 
