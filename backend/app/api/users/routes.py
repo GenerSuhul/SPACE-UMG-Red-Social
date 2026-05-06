@@ -77,3 +77,34 @@ def update_me():
         return js(result), 400
 
     return js(result), 200
+
+
+@user_bp.route('/search', methods=['GET'])
+@jwt_required()
+@swag_from('docs/search_users.yml')
+def search_users():
+    """Búsqueda de usuarios por username (parcial, case-insensitive)."""
+    query = request.args.get("q", "").strip()
+    try:
+        limit = int(request.args.get("limit", 20))
+    except (ValueError, TypeError):
+        limit = 20
+
+    result = UserService.search_users(query, limit=limit)
+    if not result["ok"]:
+        return js(result), 400
+    return js(result), 200
+
+
+@user_bp.route('/<user_id>', methods=['GET'])
+@jwt_required()
+@swag_from('docs/get_user_by_id.yml')
+def get_user_by_id(user_id: str):
+    """Devuelve el perfil público de cualquier usuario por su id."""
+    result = UserService.get_public_profile(user_id)
+    if not result["ok"]:
+        errors = result.get("errors", [])
+        if any(err.get("field") == "user" for err in errors):
+            return js(result), 404
+        return js(result), 400
+    return js(result), 200

@@ -18,6 +18,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
 const materialModules = [
   MatCardModule,
@@ -37,6 +38,7 @@ const materialModules = [
   MatSnackBarModule,
   MatBadgeModule,
   MatMenuModule,
+  MatAutocompleteModule,
 ];
 
 @NgModule({

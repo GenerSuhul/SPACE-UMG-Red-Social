@@ -3,13 +3,68 @@
     <mat-icon>people</mat-icon>
   </button>
   <span class="app-title">Red Social</span>
+
+  <!-- ── Search ── -->
+  <div class="search-wrapper" #searchWrapper>
+    <mat-form-field
+      appearance="outline"
+      class="search-field"
+      subscriptSizing="dynamic"
+    >
+      <mat-icon matPrefix>search</mat-icon>
+      <input
+        matInput
+        [formControl]="searchControl"
+        placeholder="Buscar usuarios..."
+        autocomplete="off"
+        aria-label="Buscar usuarios"
+      />
+      <button
+        *ngIf="searchControl.value"
+        matSuffix
+        mat-icon-button
+        aria-label="Limpiar búsqueda"
+        (click)="closeSearch()"
+      >
+        <mat-icon>close</mat-icon>
+      </button>
+    </mat-form-field>
+
+    <!-- Results dropdown -->
+    <div class="search-dropdown" *ngIf="showDropdown" role="listbox">
+      <div
+        class="search-result-item"
+        *ngFor="let user of searchResults"
+        (click)="selectUser(user)"
+        (keydown.enter)="selectUser(user)"
+        tabindex="0"
+        role="option"
+        [attr.aria-label]="user.username"
+      >
+        <img
+          *ngIf="user.avatar_base64"
+          [src]="'data:' + user.avatar_mime + ';base64,' + user.avatar_base64"
+          class="result-avatar"
+          alt=""
+          aria-hidden="true"
+        />
+        <mat-icon *ngIf="!user.avatar_base64" class="result-avatar-icon">account_circle</mat-icon>
+        <div class="result-text">
+          <span class="result-username">{{ user.username }}</span>
+          <span class="result-name">{{ user.first_name }} {{ user.last_name }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- ── /Search ── -->
+
   <span class="spacer"></span>
 
-  <!-- Avatar button — navigates to user profile -->
+  <!-- Avatar button — navigates to own profile -->
   <button
     mat-icon-button
     aria-label="Ir a mi perfil"
-    (click)="goToUsers()"
+    (click)="goToMyProfile()"
     class="avatar-btn"
     matTooltip="Mi perfil"
   >
@@ -22,7 +77,6 @@
       />
       <mat-icon *ngIf="!user.avatar_base64">account_circle</mat-icon>
     </ng-container>
-    <!-- Shown before user data is loaded -->
     <mat-icon *ngIf="!(currentUser$ | async)">manage_accounts</mat-icon>
   </button>
 

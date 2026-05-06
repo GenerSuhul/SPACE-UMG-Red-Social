@@ -1,7 +1,9 @@
 from pydantic import ValidationError
 
 from .repository import UserRepository
-from .schemas import UserSchema, UserUpdateSchema
+from .schemas import UserSchema, UserUpdateSchema, UserPublicSchema
+from bson import ObjectId
+from bson.errors import InvalidId
 from backend.app.image_utils import normalize_base64_image, ImageError
 
 class UserService:
@@ -114,3 +116,54 @@ class UserService:
         updated_user.setdefault("avatar_mime", None)
         user_parsed = UserSchema(**updated_user)
         return {"ok": True, "user": user_parsed.model_dump()}
+
+    # ------------------------------------------------------------------
+    # Búsqueda y perfil público
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _is_valid_object_id(value: str) -> bool:
+        try:
+            ObjectId(value)
+            return True
+        except (InvalidId, TypeError):
+            return False
+
+    @staticmethod
+    def _serialize_public(user: dict) -> dict:
+        return {
+            "id":            str(user["_id"]),
+            "username":      user.get("username", ""),
+            "first_name":    user.get("first_name", ""),
+            "last_name":     user.get("last_name", ""),
+            "age":           user.get("age", 0),
+            "avatar_base64": user.get("avatar_base64"),
+            "avatar_mime":   user.get("avatar_mime"),
+        }
+
+    @staticmethod
+    def search_users(query: str, limit: int = 20) -> dict:
+        query = (query or "").strip()
+        if len(query) < 1:
+            return {"ok": False, "errors": [{"field": "q", "message": "El término de búsqueda no puede estar vacío"}]}
+        if len(query) > 50:
+            return {"ok": False, "errors": [{"field": "q", "message": "El término de búsqueda es demasiado largo"}]}
+
+        limit = max(1, min(50, limit))
+        users = UserRepository.search_by_username(query, limit=limit)
+        return {
+            "ok":    True,
+            "users": [UserService._serialize_public(u) for u in users],
+            "total": len(users),
+        }
+
+    @staticmethod
+    def get_public_profile(user_id: str) -> dict:
+        if not user_id or not UserService._is_valid_object_id(user_id):
+            return {"ok": False, "errors": [{"field": "user_id", "message": "Id de usuario inválido"}]}
+
+        user = UserRepository.find_by_id(user_id)
+        if not user:
+            return {"ok": False, "errors": [{"field": "user", "message": "Usuario no encontrado"}]}
+
+        return {"ok": True, "user": UserService._serialize_public(user)}

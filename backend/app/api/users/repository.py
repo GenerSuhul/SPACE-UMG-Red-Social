@@ -54,6 +54,20 @@ class UserRepository:
             return {}
 
     @staticmethod
+    def search_by_username(query: str, limit: int = 20) -> list[dict]:
+        """Búsqueda parcial case-insensitive por username. Devuelve solo campos públicos."""
+        try:
+            cursor = mongo.db.users.find(
+                {"username": {"$regex": query, "$options": "i"}},
+                {"username": 1, "first_name": 1, "last_name": 1, "age": 1,
+                 "avatar_base64": 1, "avatar_mime": 1},
+            ).limit(limit)
+            return list(cursor)
+        except Exception as ex:
+            print(f"Error searching users by username: {ex}")
+            return []
+
+    @staticmethod
     def update_by_id(user_id: str, update_fields: dict) -> dict | None:
         """
         Actualiza solo los campos enviados (update parcial).

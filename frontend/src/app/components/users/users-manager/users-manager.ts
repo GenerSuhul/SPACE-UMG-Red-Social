@@ -11,10 +11,10 @@ import {
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 
-import { UsersService } from '../../service/users/users';
-import { UserInterface } from '../../models/users';
-import { NotificationDialog } from '../shared/notification-dialog/notification-dialog';
-import { NotificationDialogData } from '../shared/notification-dialog/notification-dialog.model';
+import { UsersService } from '../../../service/users/users';
+import { UserInterface } from '../../../models/users';
+import { NotificationDialog } from '../../shared/notification-dialog/notification-dialog';
+import { NotificationDialogData } from '../../shared/notification-dialog/notification-dialog.model';
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -29,11 +29,11 @@ const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 export class UsersManager implements OnInit {
   @ViewChild('fileInput') private fileInputRef!: ElementRef<HTMLInputElement>;
 
-  loading        = signal(true);
-  editMode       = signal(false);
+  loading         = signal(true);
+  editMode        = signal(false);
   avatarUploading = signal(false);
   /** Local preview URL created via URL.createObjectURL — null when no pending file. */
-  previewUrl     = signal<string | null>(null);
+  previewUrl      = signal<string | null>(null);
 
   user = signal<UserInterface | null>(null);
 
@@ -167,11 +167,12 @@ export class UsersManager implements OnInit {
           message: 'Tu perfil fue actualizado correctamente.',
         });
       },
-      error: (error: any) => {
+      error: (error: unknown) => {
+        const err = error as { error?: { message?: string } };
         this.openDialog({
           type: 'error',
           title: 'Error',
-          message: error?.error?.message ?? 'Ocurrió un error inesperado.',
+          message: err?.error?.message ?? 'Ocurrió un error inesperado.',
         });
       },
     });

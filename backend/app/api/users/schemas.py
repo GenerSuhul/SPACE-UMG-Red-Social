@@ -4,6 +4,17 @@ import re
 from backend.app.image_utils import ALLOWED_IMAGE_MIMES
 
 
+class UserPublicSchema(BaseModel):
+    """Perfil público de un usuario — sin datos sensibles (email, is_active)."""
+    id:            str
+    username:      str
+    first_name:    str
+    last_name:     str
+    age:           int
+    avatar_base64: str | None = None
+    avatar_mime:   str | None = None
+
+
 class UserSchema(BaseModel):
     _id:           str
     username:      str

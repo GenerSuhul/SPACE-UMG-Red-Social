@@ -1,0 +1,68 @@
+<div class="page-wrapper">
+
+  <!-- Estado de carga -->
+  <div *ngIf="loading()" class="state-center">
+    <mat-spinner diameter="48"></mat-spinner>
+    <p>Cargando perfil...</p>
+  </div>
+
+  <!-- Usuario no encontrado -->
+  <div *ngIf="!loading() && notFound()" class="state-center">
+    <mat-icon class="not-found-icon">person_off</mat-icon>
+    <p class="not-found-text">Usuario no encontrado.</p>
+  </div>
+
+  <!-- Perfil público -->
+  <div *ngIf="!loading() && !notFound() && user()" class="profile-container">
+    <mat-card class="profile-card">
+
+      <!-- Header -->
+      <div class="profile-header">
+        <div class="avatar-wrapper">
+          <img
+            *ngIf="avatarSrc"
+            [src]="avatarSrc"
+            alt="Foto de perfil"
+            class="avatar-img"
+          />
+          <mat-icon *ngIf="!avatarSrc" class="avatar-icon">account_circle</mat-icon>
+        </div>
+
+        <h2 class="full-name">{{ user()?.first_name }} {{ user()?.last_name }}</h2>
+        <p class="username">@{{ user()?.username }}</p>
+      </div>
+
+      <mat-card-content class="card-content">
+        <div class="profile-fields">
+
+          <div class="field-row">
+            <mat-icon>person</mat-icon>
+            <div class="field-info">
+              <span class="field-label">Nombre de usuario</span>
+              <span class="field-value">{{ user()?.username }}</span>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <mat-icon>badge</mat-icon>
+            <div class="field-info">
+              <span class="field-label">Nombre completo</span>
+              <span class="field-value">{{ user()?.first_name }} {{ user()?.last_name }}</span>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <mat-icon>cake</mat-icon>
+            <div class="field-info">
+              <span class="field-label">Edad</span>
+              <span class="field-value">{{ user()?.age }} años</span>
+            </div>
+          </div>
+
+        </div>
+      </mat-card-content>
+
+    </mat-card>
+  </div>
+
+</div>

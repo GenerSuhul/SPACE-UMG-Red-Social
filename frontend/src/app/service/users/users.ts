@@ -2,7 +2,13 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { Config } from '../config/config';
-import { GetUserResponse, UpdateAvatarResponse, UserInterface } from '../../models/users';
+import {
+  GetPublicUserResponse,
+  GetUserResponse,
+  SearchUsersResponse,
+  UpdateAvatarResponse,
+  UserInterface,
+} from '../../models/users';
 
 @Injectable({ providedIn: 'root' })
 export class UsersService {
@@ -60,6 +66,19 @@ export class UsersService {
         if (res.ok) this.currentUserSubject.next(res.user);
       }),
     );
+  }
+
+  /** Search users by username (debounced at the call site). */
+  searchUsers(query: string, limit = 20): Observable<SearchUsersResponse> {
+    const url    = `${this.configService.appConfig.apiUrl}/api/users/search`;
+    const params = { q: query, limit: String(limit) };
+    return this.http.get<SearchUsersResponse>(url, { params });
+  }
+
+  /** Fetch the public profile of any user by their id. */
+  getUserById(userId: string): Observable<GetPublicUserResponse> {
+    const url = `${this.configService.appConfig.apiUrl}/api/users/${userId}`;
+    return this.http.get<GetPublicUserResponse>(url);
   }
 
   /** Imperatively push a user update (e.g. after local edits). */

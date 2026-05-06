@@ -8,7 +8,7 @@ const routes: Routes = [
   },
   {
     path: 'users',
-    loadChildren: () => import('./components/users-manager/users-manager-module').then(m => m.UsersManagerModule)
+    loadChildren: () => import('./components/users/users-module').then(m => m.UsersModule)
   },
   {
     path: 'feed',
