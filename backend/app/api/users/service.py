@@ -15,7 +15,7 @@ class UserService:
         if not user_found:
             return {"ok": False, "error": [{"field": "user", "message": "Usuario no encontrado"}]}
 
-        # parsear user
+        user_found.setdefault("is_active", True)
         uesr_parsed = UserSchema(**user_found)
 
         return {"ok": True, "user": uesr_parsed.model_dump()}

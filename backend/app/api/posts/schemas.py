@@ -7,6 +7,14 @@ from typing import Literal
 ReactionType = Literal["like", "love", "haha", "wow", "sad", "angry"]
 TargetType   = Literal["post", "comment"]
 
+# ---------------------------------------------------------------------------
+# Restricciones para imágenes embebidas en Base64
+# ---------------------------------------------------------------------------
+ALLOWED_IMAGE_MIMES = {"image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"}
+# Limite del tamaño DECODIFICADO de la imagen. 5 MB cubre fotos típicas y deja
+# margen frente al limite de 16 MB de un documento BSON.
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
 
 # ---------------------------------------------------------------------------
 # POSTS
@@ -15,11 +23,18 @@ class PostCreateSchema(BaseModel):
     """
     Schema para crear una publicación.
     El `author_id` no se envía: se extrae del JWT en la capa de service.
+
+    `image_base64` e `image_mime` son opcionales y permiten adjuntar UNA
+    imagen directamente embebida en la petición JSON. Cuando la petición es
+    multipart/form-data con `image` como archivo, la conversión a Base64 la
+    hace la capa de routes/service antes de llegar a este schema.
     """
     model_config = ConfigDict(extra="forbid")
 
-    content:    str         = Field(..., min_length=1, max_length=5000)
-    media_urls: list[str]   = Field(default_factory=list)
+    content:      str         = Field(..., min_length=1, max_length=5000)
+    media_urls:   list[str]   = Field(default_factory=list)
+    image_base64: str | None  = None
+    image_mime:   str | None  = None
 
     @field_validator("content")
     @classmethod
@@ -41,6 +56,18 @@ class PostCreateSchema(BaseModel):
                 raise ValueError("Las URLs de media deben ser strings no vacíos")
         return [u.strip() for u in value]
 
+    @field_validator("image_mime")
+    @classmethod
+    def validate_image_mime(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip().lower()
+        if cleaned not in ALLOWED_IMAGE_MIMES:
+            raise ValueError(
+                f"Tipo de imagen no permitido. Permitidos: {sorted(ALLOWED_IMAGE_MIMES)}"
+            )
+        return cleaned
+
 
 class PostResponseSchema(BaseModel):
     """Schema canónico para serializar un post en respuestas."""
@@ -48,6 +75,8 @@ class PostResponseSchema(BaseModel):
     author_id:        str
     content:          str
     media_urls:       list[str]
+    image_base64:     str | None = None
+    image_mime:       str | None = None
     created_at:       str
     updated_at:       str | None = None
     reactions_count:  dict[str, int]
@@ -61,11 +90,15 @@ class CommentCreateSchema(BaseModel):
     """
     Schema para crear un comentario en un post.
     `post_id` viene de la URL, `author_id` del JWT — ambos se inyectan en service.
+
+    Soporta opcionalmente una imagen Base64 embebida igual que los posts.
     """
     model_config = ConfigDict(extra="forbid")
 
     content:           str       = Field(..., min_length=1, max_length=2000)
     parent_comment_id: str | None = None
+    image_base64:      str | None = None
+    image_mime:        str | None = None
 
     @field_validator("content")
     @classmethod
@@ -73,6 +106,18 @@ class CommentCreateSchema(BaseModel):
         cleaned = value.strip()
         if not cleaned:
             raise ValueError("El comentario no puede estar vacío")
+        return cleaned
+
+    @field_validator("image_mime")
+    @classmethod
+    def validate_image_mime(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip().lower()
+        if cleaned not in ALLOWED_IMAGE_MIMES:
+            raise ValueError(
+                f"Tipo de imagen no permitido. Permitidos: {sorted(ALLOWED_IMAGE_MIMES)}"
+            )
         return cleaned
 
 
@@ -83,6 +128,8 @@ class CommentResponseSchema(BaseModel):
     author_id:         str
     content:           str
     parent_comment_id: str | None = None
+    image_base64:      str | None = None
+    image_mime:        str | None = None
     created_at:        str
     reactions_count:   dict[str, int]
 

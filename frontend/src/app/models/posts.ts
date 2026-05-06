@@ -15,6 +15,8 @@ export interface Post {
   author_username: string;
   content:         string;
   media_urls:      string[];
+  image_base64:    string | null;
+  image_mime:      string | null;
   created_at:      string;
   updated_at:      string | null;
   reactions_count: ReactionsCount;
@@ -28,6 +30,8 @@ export interface Comment {
   author_username:   string;
   content:           string;
   parent_comment_id: string | null;
+  image_base64:      string | null;
+  image_mime:        string | null;
   created_at:        string;
   reactions_count:   ReactionsCount;
 }

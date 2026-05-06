@@ -11,6 +11,7 @@ from .schemas import (
     ReactionCreateSchema,
     empty_reactions_count,
 )
+from .image_utils import normalize_base64_image, ImageError
 
 
 # ---------------------------------------------------------------------------
@@ -44,6 +45,9 @@ def _serialize_post(post: dict, author_username: str | None = None) -> dict:
         "author_username": author_username,
         "content":         post.get("content", ""),
         "media_urls":      post.get("media_urls", []),
+        # Imagen embebida — el frontend construye el data URL.
+        "image_base64":    post.get("image_base64"),
+        "image_mime":      post.get("image_mime"),
         "created_at":      _iso(post.get("created_at")),
         "updated_at":      _iso(post.get("updated_at")),
         "reactions_count": post.get("reactions_count", empty_reactions_count()),
@@ -62,9 +66,28 @@ def _serialize_comment(comment: dict, author_username: str | None = None) -> dic
             str(comment["parent_comment_id"])
             if comment.get("parent_comment_id") else None
         ),
+        "image_base64":      comment.get("image_base64"),
+        "image_mime":        comment.get("image_mime"),
         "created_at":        _iso(comment.get("created_at")),
         "reactions_count":   comment.get("reactions_count", empty_reactions_count()),
     }
+
+
+def _resolve_image_fields(
+    image_b64: str | None, image_mime: str | None
+) -> tuple[str | None, str | None, list[dict] | None]:
+    """
+    Si la petición incluye imagen, valida y normaliza los campos.
+    Devuelve (b64_normalizado, mime_normalizado, errores_o_None).
+    Si no hay imagen, devuelve (None, None, None).
+    """
+    if not image_b64:
+        return None, None, None
+    try:
+        clean_b64, clean_mime = normalize_base64_image(image_b64, image_mime)
+    except ImageError as ex:
+        return None, None, [{"field": "image", "message": str(ex)}]
+    return clean_b64, clean_mime, None
 
 
 def _serialize_reaction(reaction: dict) -> dict:
@@ -111,10 +134,19 @@ class PostService:
         except ValidationError as e:
             return {"ok": False, "errors": _validation_errors(e)}
 
+        # Procesa la imagen (opcional) — valida tamaño/mime/decodificación.
+        image_b64, image_mime, image_errs = _resolve_image_fields(
+            validated.image_base64, validated.image_mime
+        )
+        if image_errs:
+            return {"ok": False, "errors": image_errs}
+
         post_doc = {
             "author_id":       ObjectId(author_id),
             "content":         validated.content,
             "media_urls":      validated.media_urls,
+            "image_base64":    image_b64,
+            "image_mime":      image_mime,
             "reactions_count": empty_reactions_count(),
             "comments_count":  0,
             "created_at":      datetime.now(timezone.utc),
@@ -231,11 +263,20 @@ class CommentService:
                 return {"ok": False, "errors": [{"field": "parent_comment_id", "message": "El comentario padre no pertenece al post"}]}
             parent_oid = ObjectId(validated.parent_comment_id)
 
+        # Imagen opcional para el comentario / sub-comentario.
+        image_b64, image_mime, image_errs = _resolve_image_fields(
+            validated.image_base64, validated.image_mime
+        )
+        if image_errs:
+            return {"ok": False, "errors": image_errs}
+
         comment_doc = {
             "post_id":           ObjectId(post_id),
             "author_id":         ObjectId(author_id),
             "content":           validated.content,
             "parent_comment_id": parent_oid,
+            "image_base64":      image_b64,
+            "image_mime":        image_mime,
             "reactions_count":   empty_reactions_count(),
             "created_at":        datetime.now(timezone.utc),
         }

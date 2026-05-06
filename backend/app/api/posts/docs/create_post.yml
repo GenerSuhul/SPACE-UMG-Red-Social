@@ -1,18 +1,26 @@
 tags:
   - Posts
-summary: Crea una nueva publicación
+summary: Crea una nueva publicación (con imagen opcional)
 description: >
   Crea una publicación cuyo autor es el usuario autenticado (obtenido del JWT).
+  Soporta dos formatos de body:
+    - application/json: incluye opcionalmente `image_base64` (con o sin prefijo
+      data URL) y `image_mime` (image/png, image/jpeg, image/jpg, image/gif,
+      image/webp).
+    - multipart/form-data: campos de texto + archivo `image` (max 5 MB).
+  La imagen se almacena embebida como Base64 en el documento del post y se
+  devuelve en el GET para que el frontend la pinte como `data:{mime};base64,...`.
 security:
   - Bearer: []
 consumes:
   - application/json
+  - multipart/form-data
 produces:
   - application/json
 parameters:
   - in: body
     name: body
-    required: true
+    required: false
     schema:
       type: object
       required:
@@ -29,6 +37,22 @@ parameters:
           items:
             type: string
           example: ["https://example.com/img1.png"]
+        image_base64:
+          type: string
+          description: Imagen embebida en Base64 (puede traer prefijo data URL)
+        image_mime:
+          type: string
+          enum: ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"]
+  - in: formData
+    name: content
+    type: string
+    required: false
+    description: Igual que en JSON. Usar cuando se sube imagen como archivo.
+  - in: formData
+    name: image
+    type: file
+    required: false
+    description: Archivo de imagen (max 5 MB, mime permitido)
 responses:
   201:
     description: Post creado correctamente
@@ -40,7 +64,13 @@ responses:
           example: true
         post:
           type: object
+          properties:
+            id: {type: string}
+            author_id: {type: string}
+            content: {type: string}
+            image_base64: {type: string, description: "Base64 sin prefijo data URL"}
+            image_mime: {type: string}
   400:
-    description: Error de validación
+    description: Error de validación (incluye imagen demasiado grande o mime inválido)
   401:
     description: Token JWT ausente o inválido

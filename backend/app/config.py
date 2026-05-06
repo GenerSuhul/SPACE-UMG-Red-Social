@@ -20,6 +20,12 @@ class BaseConfig:
     DEBUG: bool = False
     TESTING: bool = False
 
+    # Cota superior del body — necesario para multipart/form-data con imágenes
+    # y para JSON que incluya `image_base64` (Base64 inflado ~33%).
+    # Con MAX_IMAGE_BYTES = 5 MB el peor caso por JSON ronda los 7 MB; 12 MB
+    # deja margen para los campos de texto y headers.
+    MAX_CONTENT_LENGTH: int = 12 * 1024 * 1024
+
     # @classmethod
     # def vermongo(cls):
     #     print(f"MONGO_URI: {cls.MONGO_URI}")

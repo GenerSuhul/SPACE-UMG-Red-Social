@@ -1,10 +1,15 @@
 tags:
   - Comments
-summary: Crea un comentario en un post
+summary: Crea un comentario o sub-comentario en un post (con imagen opcional)
+description: >
+  Crea un comentario sobre un post. Para crear un sub-comentario se incluye
+  `parent_comment_id` en el body. Soporta tanto JSON como multipart/form-data
+  para adjuntar imagen.
 security:
   - Bearer: []
 consumes:
   - application/json
+  - multipart/form-data
 produces:
   - application/json
 parameters:
@@ -14,7 +19,7 @@ parameters:
     required: true
   - in: body
     name: body
-    required: true
+    required: false
     schema:
       type: object
       required:
@@ -29,11 +34,30 @@ parameters:
         parent_comment_id:
           type: string
           description: Id del comentario padre (para respuestas anidadas)
+        image_base64:
+          type: string
+          description: Imagen embebida en Base64 (con o sin prefijo data URL)
+        image_mime:
+          type: string
+          enum: ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"]
+  - in: formData
+    name: content
+    type: string
+    required: false
+  - in: formData
+    name: parent_comment_id
+    type: string
+    required: false
+  - in: formData
+    name: image
+    type: file
+    required: false
+    description: Archivo de imagen (max 5 MB)
 responses:
   201:
     description: Comentario creado
   400:
-    description: Error de validación
+    description: Error de validación (incluye imagen demasiado grande o mime inválido)
   404:
     description: Post no encontrado
   401:

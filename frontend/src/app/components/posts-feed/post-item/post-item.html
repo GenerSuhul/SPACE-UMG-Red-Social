@@ -29,7 +29,15 @@
   <mat-card-content class="post-content">
     <p class="content-text">{{ post.content }}</p>
 
-    <!-- Media thumbnails -->
+    <!-- Post image -->
+    <div *ngIf="post.image_base64" class="post-image-wrapper">
+      <img
+        [src]="'data:' + post.image_mime + ';base64,' + post.image_base64"
+        class="post-image"
+        alt="Imagen de la publicacion" />
+    </div>
+
+    <!-- Media thumbnails (legacy URL-based) -->
     <div *ngIf="post.media_urls.length > 0" class="media-row">
       <a
         *ngFor="let url of post.media_urls"
@@ -154,6 +162,14 @@
 
         <p class="comment-content">{{ comment.content }}</p>
 
+        <!-- Comment image -->
+        <div *ngIf="comment.image_base64" class="comment-image-wrapper">
+          <img
+            [src]="'data:' + comment.image_mime + ';base64,' + comment.image_base64"
+            class="comment-image"
+            alt="Imagen del comentario" />
+        </div>
+
         <!-- Interactive reactions for top-level comment -->
         <div class="comment-reaction-area">
           <button
@@ -254,6 +270,14 @@
 
               <p class="comment-content">{{ reply.content }}</p>
 
+              <!-- Reply image -->
+              <div *ngIf="reply.image_base64" class="comment-image-wrapper">
+                <img
+                  [src]="'data:' + reply.image_mime + ';base64,' + reply.image_base64"
+                  class="comment-image"
+                  alt="Imagen de la respuesta" />
+              </div>
+
               <!-- Interactive reactions for reply -->
               <div class="comment-reaction-area">
                 <button
@@ -310,32 +334,68 @@
       </div>
 
       <form [formGroup]="commentForm" (ngSubmit)="submitComment()" novalidate class="comment-form">
-        <mat-form-field appearance="outline" class="comment-field">
-          <mat-label>{{ replyingToId() ? 'Escribe tu respuesta...' : 'Escribe un comentario...' }}</mat-label>
-          <textarea
-            matInput
-            formControlName="content"
-            rows="2"
-            [attr.aria-label]="replyingToId() ? 'Respuesta' : 'Nuevo comentario'">
-          </textarea>
-          <mat-error *ngIf="commentForm.get('content')?.hasError('required')">
-            El comentario no puede estar vacio.
-          </mat-error>
-          <mat-error *ngIf="commentForm.get('content')?.hasError('maxlength')">
-            Maximo 2000 caracteres.
-          </mat-error>
-        </mat-form-field>
+        <div class="comment-form-body">
+          <mat-form-field appearance="outline" class="comment-field">
+            <mat-label>{{ replyingToId() ? 'Escribe tu respuesta...' : 'Escribe un comentario...' }}</mat-label>
+            <textarea
+              matInput
+              formControlName="content"
+              rows="2"
+              [attr.aria-label]="replyingToId() ? 'Respuesta' : 'Nuevo comentario'">
+            </textarea>
+            <mat-error *ngIf="commentForm.get('content')?.hasError('required')">
+              El comentario no puede estar vacio.
+            </mat-error>
+            <mat-error *ngIf="commentForm.get('content')?.hasError('maxlength')">
+              Maximo 2000 caracteres.
+            </mat-error>
+          </mat-form-field>
 
-        <button
-          mat-raised-button
-          color="accent"
-          type="submit"
-          [disabled]="submittingComment() || commentForm.invalid"
-          aria-label="Enviar comentario">
-          <mat-spinner *ngIf="submittingComment()" diameter="16" class="inline-spinner"></mat-spinner>
-          <mat-icon *ngIf="!submittingComment()">send</mat-icon>
-          <span>{{ submittingComment() ? '' : 'Comentar' }}</span>
-        </button>
+          <!-- Comment image upload -->
+          <div class="comment-image-upload-row">
+            <label
+              class="comment-image-upload-label"
+              [matTooltip]="selectedCommentImage() ? 'Cambiar imagen' : 'Adjuntar imagen'"
+              aria-label="Adjuntar imagen al comentario">
+              <mat-icon>image</mat-icon>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                class="file-input-hidden"
+                (change)="onCommentImageSelected($event)"
+                aria-label="Seleccionar imagen para el comentario">
+            </label>
+            <button
+              *ngIf="selectedCommentImage()"
+              mat-icon-button
+              type="button"
+              class="comment-clear-image-btn"
+              (click)="clearCommentImage()"
+              aria-label="Quitar imagen"
+              matTooltip="Quitar imagen">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+
+          <!-- Comment image preview -->
+          <div *ngIf="commentImagePreview()" class="comment-image-preview-wrapper">
+            <img
+              [src]="commentImagePreview()"
+              class="comment-image-preview"
+              alt="Vista previa de la imagen del comentario" />
+          </div>
+
+          <button
+            mat-raised-button
+            color="accent"
+            type="submit"
+            [disabled]="submittingComment() || commentForm.invalid"
+            aria-label="Enviar comentario">
+            <mat-spinner *ngIf="submittingComment()" diameter="16" class="inline-spinner"></mat-spinner>
+            <mat-icon *ngIf="!submittingComment()">send</mat-icon>
+            <span>{{ submittingComment() ? '' : 'Comentar' }}</span>
+          </button>
+        </div>
       </form>
     </div>
 

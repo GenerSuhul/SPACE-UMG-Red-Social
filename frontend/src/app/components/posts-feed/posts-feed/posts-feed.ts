@@ -30,6 +30,9 @@ export class PostsFeed implements OnInit {
   creatingPost = signal(false);
   showNewPostForm = signal(false);
 
+  selectedPostImage = signal<File | null>(null);
+  postImagePreview = signal<string | null>(null);
+
   newPostForm: FormGroup;
 
   constructor(
@@ -86,7 +89,28 @@ export class PostsFeed implements OnInit {
     this.showNewPostForm.set(!this.showNewPostForm());
     if (!this.showNewPostForm()) {
       this.newPostForm.reset();
+      this.clearPostImage();
     }
+  }
+
+  onPostImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    this.selectedPostImage.set(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => this.postImagePreview.set(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      this.postImagePreview.set(null);
+    }
+    // Reset input value so the same file can be re-selected after clearing.
+    input.value = '';
+  }
+
+  clearPostImage(): void {
+    this.selectedPostImage.set(null);
+    this.postImagePreview.set(null);
   }
 
   submitNewPost(): void {
@@ -97,14 +121,16 @@ export class PostsFeed implements OnInit {
 
     this.creatingPost.set(true);
     const content: string = this.newPostForm.get('content')!.value;
+    const image = this.selectedPostImage() ?? undefined;
 
-    this.postsService.createPost(content)
+    this.postsService.createPost(content, image)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
           this.creatingPost.set(false);
           this.showNewPostForm.set(false);
           this.newPostForm.reset();
+          this.clearPostImage();
           // Prepend new post at the top
           this.posts.update(current => [res.post, ...current]);
           this.snackBar.open('Publicacion creada.', 'Cerrar', { duration: 3000 });

@@ -4,6 +4,7 @@ from flasgger import swag_from
 
 from . import posts_bp
 from .service import PostService, CommentService, ReactionService
+from .image_utils import file_storage_to_base64, ImageError
 
 
 # ===========================================================================
@@ -27,6 +28,48 @@ def _status_for_errors(errors: list[dict], default: int = 400) -> int:
     return default
 
 
+def _parse_payload_with_optional_image() -> tuple[dict | None, dict | None]:
+    """
+    Lee el body de la request soportando dos formatos:
+      - application/json puro
+      - multipart/form-data (campos de texto + archivo `image`)
+
+    Devuelve (payload_dict, error_dict).
+    Si hay error procesando el archivo, payload es None y error trae el
+    diccionario en formato `{"ok": False, "errors": [...]}`.
+    """
+    content_type = (request.content_type or "").lower()
+
+    # --- multipart: combinamos campos de texto + archivo `image` ---
+    if "multipart/form-data" in content_type:
+        data: dict = {}
+        # form puede traer todos los campos como strings
+        for key, value in request.form.items():
+            # `media_urls` puede venir repetido; preferimos getlist en ese caso
+            if key == "media_urls":
+                continue
+            data[key] = value
+        media_urls = request.form.getlist("media_urls")
+        if media_urls:
+            data["media_urls"] = media_urls
+
+        file = request.files.get("image")
+        if file is not None and getattr(file, "filename", ""):
+            try:
+                b64, mime = file_storage_to_base64(file)
+            except ImageError as ex:
+                return None, {
+                    "ok": False,
+                    "errors": [{"field": "image", "message": str(ex)}],
+                }
+            data["image_base64"] = b64
+            data["image_mime"]   = mime
+        return data, None
+
+    # --- JSON puro (comportamiento previo intacto) ---
+    return request.get_json(silent=True), None
+
+
 # ===========================================================================
 # POSTS
 # ===========================================================================
@@ -34,9 +77,14 @@ def _status_for_errors(errors: list[dict], default: int = 400) -> int:
 @jwt_required()
 @swag_from('docs/create_post.yml')
 def create_post():
-    """Crea una nueva publicación del usuario autenticado."""
+    """Crea una nueva publicación del usuario autenticado.
+
+    Acepta tanto application/json como multipart/form-data (para subir imagen).
+    """
     user_id = get_jwt_identity()
-    data = request.get_json(silent=True)
+    data, image_err = _parse_payload_with_optional_image()
+    if image_err:
+        return js(image_err), 400
 
     result = PostService.create_post(user_id, data)
     if not result["ok"]:
@@ -86,9 +134,16 @@ def delete_post(post_id: str):
 @jwt_required()
 @swag_from('docs/create_comment.yml')
 def create_comment(post_id: str):
-    """Agrega un comentario a un post."""
+    """Agrega un comentario (o respuesta) a un post.
+
+    Acepta application/json o multipart/form-data si se adjunta imagen.
+    Para crear un subcomentario se usa el mismo endpoint enviando
+    `parent_comment_id` en el body.
+    """
     user_id = get_jwt_identity()
-    data = request.get_json(silent=True)
+    data, image_err = _parse_payload_with_optional_image()
+    if image_err:
+        return js(image_err), 400
 
     result = CommentService.create_comment(post_id, user_id, data)
     if not result["ok"]:

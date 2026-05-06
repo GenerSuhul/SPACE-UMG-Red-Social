@@ -75,6 +75,10 @@ export class PostItem {
   submittingComment = signal(false);
   replyingToId = signal<string | null>(null);
 
+  // Comment / reply image attachment
+  selectedCommentImage = signal<File | null>(null);
+  commentImagePreview = signal<string | null>(null);
+
   // Post reaction state
   reactingToPost = signal(false);
   myPostReaction = signal<ReactionType | null>(null);
@@ -230,6 +234,27 @@ export class PostItem {
   setReplyTarget(commentId: string | null): void {
     this.replyingToId.set(commentId);
     this.commentForm.reset();
+    this.clearCommentImage();
+  }
+
+  onCommentImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    this.selectedCommentImage.set(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => this.commentImagePreview.set(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      this.commentImagePreview.set(null);
+    }
+    // Reset so the same file can be re-selected after clearing.
+    input.value = '';
+  }
+
+  clearCommentImage(): void {
+    this.selectedCommentImage.set(null);
+    this.commentImagePreview.set(null);
   }
 
   submitComment(): void {
@@ -241,8 +266,9 @@ export class PostItem {
     this.submittingComment.set(true);
     const content: string = this.commentForm.get('content')!.value;
     const parentId = this.replyingToId() ?? undefined;
+    const image = this.selectedCommentImage() ?? undefined;
 
-    this.postsService.createComment(this.post.id, content, parentId)
+    this.postsService.createComment(this.post.id, content, parentId, image)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
@@ -265,6 +291,7 @@ export class PostItem {
           this.submittingComment.set(false);
           this.replyingToId.set(null);
           this.commentForm.reset();
+          this.clearCommentImage();
           this.snackBar.open('Comentario agregado.', 'Cerrar', { duration: 2500 });
         },
         error: () => {

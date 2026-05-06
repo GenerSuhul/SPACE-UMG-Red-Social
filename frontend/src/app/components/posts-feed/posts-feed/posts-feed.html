@@ -40,6 +40,41 @@
           </mat-error>
         </mat-form-field>
 
+        <!-- Image upload area -->
+        <div class="image-upload-area">
+          <label class="image-upload-label" aria-label="Adjuntar imagen a la publicacion">
+            <mat-icon>image</mat-icon>
+            <span>{{ selectedPostImage() ? 'Cambiar imagen' : 'Adjuntar imagen' }}</span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+              class="file-input-hidden"
+              (change)="onPostImageSelected($event)"
+              aria-label="Seleccionar imagen">
+          </label>
+          <button
+            *ngIf="selectedPostImage()"
+            mat-icon-button
+            type="button"
+            class="clear-image-btn"
+            (click)="clearPostImage()"
+            aria-label="Quitar imagen"
+            matTooltip="Quitar imagen">
+            <mat-icon>close</mat-icon>
+          </button>
+          <span *ngIf="selectedPostImage()" class="selected-filename">
+            {{ selectedPostImage()!.name }}
+          </span>
+        </div>
+
+        <!-- Image preview -->
+        <div *ngIf="postImagePreview()" class="image-preview-wrapper">
+          <img
+            [src]="postImagePreview()"
+            class="image-preview"
+            alt="Vista previa de la imagen a publicar" />
+        </div>
+
         <div class="form-actions">
           <button
             mat-raised-button

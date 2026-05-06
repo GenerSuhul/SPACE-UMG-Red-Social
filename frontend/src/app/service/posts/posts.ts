@@ -35,11 +35,13 @@ export class PostsService {
     return this.http.get<GetPostResponse>(`${this.baseUrl}/${postId}`);
   }
 
-  createPost(content: string, mediaUrls: string[] = []): Observable<CreatePostResponse> {
-    return this.http.post<CreatePostResponse>(`${this.baseUrl}/`, {
-      content,
-      media_urls: mediaUrls,
-    });
+  createPost(content: string, image?: File): Observable<CreatePostResponse> {
+    const fd = new FormData();
+    fd.append('content', content);
+    if (image) {
+      fd.append('image', image);
+    }
+    return this.http.post<CreatePostResponse>(`${this.baseUrl}/`, fd);
   }
 
   deletePost(postId: string): Observable<DeleteResponse> {
@@ -55,12 +57,16 @@ export class PostsService {
     return this.http.get<ListCommentsResponse>(`${this.baseUrl}/${postId}/comments`, { params });
   }
 
-  createComment(postId: string, content: string, parentCommentId?: string): Observable<CreateCommentResponse> {
-    const body: { content: string; parent_comment_id?: string } = { content };
+  createComment(postId: string, content: string, parentCommentId?: string, image?: File): Observable<CreateCommentResponse> {
+    const fd = new FormData();
+    fd.append('content', content);
     if (parentCommentId) {
-      body.parent_comment_id = parentCommentId;
+      fd.append('parent_comment_id', parentCommentId);
     }
-    return this.http.post<CreateCommentResponse>(`${this.baseUrl}/${postId}/comments`, body);
+    if (image) {
+      fd.append('image', image);
+    }
+    return this.http.post<CreateCommentResponse>(`${this.baseUrl}/${postId}/comments`, fd);
   }
 
   listReplies(postId: string, commentId: string, page: number = 1, pageSize: number = 50): Observable<ListRepliesResponse> {
