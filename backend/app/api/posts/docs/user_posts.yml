@@ -1,0 +1,44 @@
+tags:
+  - Posts
+summary: Posts de un usuario específico
+security:
+  - Bearer: []
+produces:
+  - application/json
+parameters:
+  - in: path
+    name: user_id
+    type: string
+    required: true
+    description: ID del usuario cuyos posts se quieren consultar
+  - in: query
+    name: page
+    type: integer
+    required: false
+    default: 1
+  - in: query
+    name: page_size
+    type: integer
+    required: false
+    default: 20
+    description: Máximo 100
+responses:
+  200:
+    description: Lista de posts del usuario
+    schema:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        posts:
+          type: array
+          items:
+            type: object
+        pagination:
+          type: object
+  400:
+    description: ID de usuario inválido
+  404:
+    description: Usuario no encontrado
+  401:
+    description: Token JWT ausente o inválido

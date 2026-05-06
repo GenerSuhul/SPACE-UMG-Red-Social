@@ -1,6 +1,6 @@
 <div class="page-wrapper">
 
-  <!-- Estado de carga -->
+  <!-- Estado de carga del perfil -->
   <div *ngIf="loading()" class="state-center">
     <mat-spinner diameter="48"></mat-spinner>
     <p>Cargando perfil...</p>
@@ -12,78 +12,103 @@
     <p class="not-found-text">Usuario no encontrado.</p>
   </div>
 
-  <!-- Perfil público -->
-  <div *ngIf="!loading() && !notFound() && user()" class="profile-container">
-    <mat-card class="profile-card">
+  <!-- Layout de dos columnas -->
+  <div *ngIf="!loading() && !notFound() && user()" class="page-layout">
 
-      <!-- Header -->
-      <div class="profile-header">
-        <div class="avatar-wrapper">
-          <img
-            *ngIf="avatarSrc"
-            [src]="avatarSrc"
-            alt="Foto de perfil"
-            class="avatar-img"
-          />
-          <mat-icon *ngIf="!avatarSrc" class="avatar-icon">account_circle</mat-icon>
-        </div>
+    <!-- Columna izquierda: publicaciones -->
+    <div class="posts-column">
+      <h3 class="section-title">Publicaciones de @{{ user()?.username }}</h3>
 
-        <div class="name-follow-row">
-          <h2 class="full-name">{{ user()?.first_name }} {{ user()?.last_name }}</h2>
-          <button
-            mat-stroked-button
-            class="follow-btn"
-            [class.following]="isFollowing()"
-            [disabled]="followLoading()"
-            (click)="onToggleFollow()"
-            [matTooltip]="isFollowing() ? 'Dejar de seguir' : 'Seguir'"
-          >
-            <mat-spinner *ngIf="followLoading()" diameter="18" class="btn-spinner"></mat-spinner>
-            <ng-container *ngIf="!followLoading()" class="follow-btn-text">
-              <mat-icon>{{ isFollowing() ? 'person_remove' : 'person_add' }}</mat-icon>
-              {{ isFollowing() ? 'Siguiendo' : 'Seguir' }}
-            </ng-container>
-          </button>
-        </div>
-
-        <p class="username">@{{ user()?.username }}</p>
-
-        <p class="followers-count">
-          <span>{{ followersCount() }} {{ followersCount() === 1 ? 'seguidor' : 'seguidores' }}</span>
-        </p>
+      <div *ngIf="postsLoading()" class="posts-loading">
+        <mat-spinner diameter="32"></mat-spinner>
+        <span>Cargando publicaciones...</span>
       </div>
 
-      <mat-card-content class="card-content">
-        <div class="profile-fields">
+      <p *ngIf="!postsLoading() && posts().length === 0" class="no-posts">
+        Este usuario aún no tiene publicaciones.
+      </p>
 
-          <div class="field-row">
-            <mat-icon>person</mat-icon>
-            <div class="field-info">
-              <span class="field-label">Nombre de usuario</span>
-              <span class="field-value">{{ user()?.username }}</span>
-            </div>
+      <app-post-item
+        *ngFor="let post of posts(); trackBy: trackByPostId"
+        [post]="post"
+        (postDeleted)="onPostDeleted($event)">
+      </app-post-item>
+    </div>
+
+    <!-- Columna derecha: perfil del usuario -->
+    <div class="profile-column">
+      <mat-card class="profile-card">
+
+        <!-- Header -->
+        <div class="profile-header">
+          <div class="avatar-wrapper">
+            <img
+              *ngIf="avatarSrc"
+              [src]="avatarSrc"
+              alt="Foto de perfil"
+              class="avatar-img"
+            />
+            <mat-icon *ngIf="!avatarSrc" class="avatar-icon">account_circle</mat-icon>
           </div>
 
-          <div class="field-row">
-            <mat-icon>badge</mat-icon>
-            <div class="field-info">
-              <span class="field-label">Nombre completo</span>
-              <span class="field-value">{{ user()?.first_name }} {{ user()?.last_name }}</span>
-            </div>
+          <div class="name-follow-row">
+            <h2 class="full-name">{{ user()?.first_name }} {{ user()?.last_name }}</h2>
+            <button
+              mat-stroked-button
+              class="follow-btn"
+              [class.following]="isFollowing()"
+              [disabled]="followLoading()"
+              (click)="onToggleFollow()"
+              [matTooltip]="isFollowing() ? 'Dejar de seguir' : 'Seguir'"
+            >
+              <mat-spinner *ngIf="followLoading()" diameter="18" class="btn-spinner"></mat-spinner>
+              <ng-container *ngIf="!followLoading()">
+                <mat-icon>{{ isFollowing() ? 'person_remove' : 'person_add' }}</mat-icon>
+                {{ isFollowing() ? 'Siguiendo' : 'Seguir' }}
+              </ng-container>
+            </button>
           </div>
 
-          <div class="field-row">
-            <mat-icon>cake</mat-icon>
-            <div class="field-info">
-              <span class="field-label">Edad</span>
-              <span class="field-value">{{ user()?.age }} años</span>
-            </div>
-          </div>
+          <p class="username">@{{ user()?.username }}</p>
 
+          <p class="followers-count">
+            <span>{{ followersCount() }} {{ followersCount() === 1 ? 'seguidor' : 'seguidores' }}</span>
+          </p>
         </div>
-      </mat-card-content>
 
-    </mat-card>
+        <mat-card-content class="card-content">
+          <div class="profile-fields">
+
+            <div class="field-row">
+              <mat-icon>person</mat-icon>
+              <div class="field-info">
+                <span class="field-label">Nombre de usuario</span>
+                <span class="field-value">{{ user()?.username }}</span>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <mat-icon>badge</mat-icon>
+              <div class="field-info">
+                <span class="field-label">Nombre completo</span>
+                <span class="field-value">{{ user()?.first_name }} {{ user()?.last_name }}</span>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <mat-icon>cake</mat-icon>
+              <div class="field-info">
+                <span class="field-label">Edad</span>
+                <span class="field-value">{{ user()?.age }} años</span>
+              </div>
+            </div>
+
+          </div>
+        </mat-card-content>
+
+      </mat-card>
+    </div>
+
   </div>
 
 </div>

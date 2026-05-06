@@ -218,6 +218,34 @@ class PostService:
         }
 
     @staticmethod
+    def list_posts_by_user(user_id: str, page: int = 1, page_size: int = 20) -> dict:
+        if not _is_valid_object_id(user_id):
+            return {"ok": False, "errors": [{"field": "user_id", "message": "Id de usuario inválido"}]}
+
+        user = UserRepository.find_by_id(user_id)
+        if not user:
+            return {"ok": False, "errors": [{"field": "user", "message": "Usuario no encontrado"}]}
+
+        page = max(1, page)
+        page_size = max(1, min(100, page_size))
+        skip = (page - 1) * page_size
+
+        posts = PostRepository.list_by_author(user_id, skip=skip, limit=page_size)
+        total = PostRepository.count_by_author(user_id)
+        profiles = _fetch_usernames(posts)
+
+        return {
+            "ok": True,
+            "posts": [_serialize_post(p, profiles) for p in posts],
+            "pagination": {
+                "page":        page,
+                "page_size":   page_size,
+                "total":       total,
+                "total_pages": (total + page_size - 1) // page_size if page_size else 0,
+            },
+        }
+
+    @staticmethod
     def delete_post(post_id: str, requester_id: str) -> dict:
         if not _is_valid_object_id(post_id):
             return {"ok": False, "errors": [{"field": "post_id", "message": "Id de post inválido"}]}

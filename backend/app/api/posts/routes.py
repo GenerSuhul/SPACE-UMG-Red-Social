@@ -19,7 +19,7 @@ def _status_for_errors(errors: list[dict], default: int = 400) -> int:
     if not errors:
         return default
     fields = {e.get("field") for e in errors}
-    if "post" in fields or "comment" in fields:
+    if "post" in fields or "comment" in fields or "user" in fields:
         for e in errors:
             if "no encontrado" in (e.get("message") or "").lower():
                 return 404
@@ -101,6 +101,33 @@ def list_posts():
     page_size = int(request.args.get("page_size", 20) or 20)
 
     result = PostService.list_posts(page=page, page_size=page_size)
+    return js(result), 200
+
+
+@posts_bp.route('/me', methods=['GET'])
+@jwt_required()
+@swag_from('docs/my_posts.yml')
+def my_posts():
+    """Listado paginado de los posts del usuario autenticado."""
+    user_id = get_jwt_identity()
+    page = int(request.args.get("page", 1) or 1)
+    page_size = int(request.args.get("page_size", 20) or 20)
+
+    result = PostService.list_posts_by_user(user_id, page=page, page_size=page_size)
+    return js(result), 200
+
+
+@posts_bp.route('/user/<user_id>', methods=['GET'])
+@jwt_required()
+@swag_from('docs/user_posts.yml')
+def user_posts(user_id: str):
+    """Listado paginado de los posts de un usuario específico."""
+    page = int(request.args.get("page", 1) or 1)
+    page_size = int(request.args.get("page_size", 20) or 20)
+
+    result = PostService.list_posts_by_user(user_id, page=page, page_size=page_size)
+    if not result["ok"]:
+        return js(result), _status_for_errors(result.get("errors", []))
     return js(result), 200
 
 

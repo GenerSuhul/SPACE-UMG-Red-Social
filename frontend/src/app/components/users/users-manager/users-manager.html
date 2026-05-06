@@ -6,192 +6,294 @@
     <p>Cargando perfil...</p>
   </div>
 
-  <!-- Card -->
-  <div *ngIf="!loading()" class="profile-container">
-    <mat-card class="profile-card">
+  <!-- Layout de dos columnas -->
+  <div *ngIf="!loading()" class="page-layout">
 
-      <!-- Header -->
-      <div class="profile-header">
+    <!-- Columna izquierda: mis publicaciones -->
+    <div class="posts-column">
 
-        <!-- Avatar area -->
-        <div class="avatar-wrapper">
-          <!-- Real avatar or preview -->
-          <img
-            *ngIf="avatarSrc"
-            [src]="avatarSrc"
-            alt="Foto de perfil"
-            class="avatar-img"
-          />
-          <!-- Placeholder when no avatar -->
-          <mat-icon *ngIf="!avatarSrc" class="avatar-icon">account_circle</mat-icon>
-
-          <!-- Upload overlay button -->
-          <button
-            mat-mini-fab
-            class="avatar-upload-btn"
-            type="button"
-            aria-label="Cambiar foto de perfil"
-            [disabled]="avatarUploading()"
-            (click)="triggerFileInput()"
-            matTooltip="Cambiar foto"
-          >
-            <mat-icon *ngIf="!avatarUploading()">photo_camera</mat-icon>
-            <mat-spinner *ngIf="avatarUploading()" diameter="20"></mat-spinner>
-          </button>
-
-          <!-- Hidden file input -->
-          <input
-            #fileInput
-            type="file"
-            accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
-            class="hidden-input"
-            aria-hidden="true"
-            (change)="onFileSelected($event)"
-          />
-        </div>
-
-        <h2 class="full-name">{{ user()?.first_name }} {{ user()?.last_name }}</h2>
-        <p class="username">@{{ user()?.username }}</p>
-
+      <div class="posts-header-row">
+        <h3 class="section-title">Mis publicaciones</h3>
         <button
-          mat-stroked-button
-          class="follows-btn"
-          (click)="goToFollows()"
-          matTooltip="Ver seguidores y seguidos"
-        >
-          <span class="follows-stat">
-            <strong>{{ followersCount() }}</strong> seguidores
-          </span>
-          <!-- <mat-divider [vertical]="true" class="stat-divider"></mat-divider> -->
-          <span class="follows-stat">
-            <strong>{{ followingCount() }}</strong> siguiendo
-          </span>
+          mat-raised-button
+          color="primary"
+          (click)="toggleNewPostForm()"
+          [attr.aria-expanded]="showNewPostForm()">
+          <mat-icon>{{ showNewPostForm() ? 'close' : 'add' }}</mat-icon>
+          {{ showNewPostForm() ? 'Cancelar' : 'Nueva publicación' }}
         </button>
-
-        <div class="edit-toggle-row">
-          <mat-icon class="toggle-icon">{{ editMode() ? 'edit' : 'visibility' }}</mat-icon>
-          <span class="toggle-label-text">{{ editMode() ? 'Modo edición' : 'Solo lectura' }}</span>
-          <mat-slide-toggle
-            [checked]="editMode()"
-            (change)="toggleEditMode($event.checked)"
-            color="accent">
-          </mat-slide-toggle>
-        </div>
       </div>
 
-      <mat-card-content class="card-content">
+      <!-- Formulario de nueva publicación -->
+      <mat-card *ngIf="showNewPostForm()" class="new-post-card">
+        <mat-card-header>
+          <mat-card-title>Crear publicación</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <form [formGroup]="newPostForm" (ngSubmit)="submitNewPost()" novalidate>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>¿Qué quieres compartir?</mat-label>
+              <textarea
+                matInput
+                formControlName="content"
+                rows="4"
+                placeholder="Escribe tu publicación..."
+                aria-label="Contenido de la publicación">
+              </textarea>
+              <mat-error *ngIf="newPostForm.get('content')?.hasError('required')">
+                El contenido es obligatorio.
+              </mat-error>
+              <mat-error *ngIf="newPostForm.get('content')?.hasError('maxlength')">
+                Máximo 5000 caracteres.
+              </mat-error>
+            </mat-form-field>
 
-        <!-- MODO VISUALIZACIÓN -->
-        <div *ngIf="!editMode()" class="profile-fields">
-
-          <div class="field-row">
-            <mat-icon>person</mat-icon>
-            <div class="field-info">
-              <span class="field-label">Nombre de usuario</span>
-              <span class="field-value">{{ user()?.username }}</span>
+            <div class="image-upload-area">
+              <label class="image-upload-label" aria-label="Adjuntar imagen a la publicación">
+                <mat-icon>image</mat-icon>
+                <span>{{ selectedPostImage() ? 'Cambiar imagen' : 'Adjuntar imagen' }}</span>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                  class="file-input-hidden"
+                  (change)="onPostImageSelected($event)"
+                  aria-label="Seleccionar imagen">
+              </label>
+              <button
+                *ngIf="selectedPostImage()"
+                mat-icon-button
+                type="button"
+                class="clear-image-btn"
+                (click)="clearPostImage()"
+                aria-label="Quitar imagen"
+                matTooltip="Quitar imagen">
+                <mat-icon>close</mat-icon>
+              </button>
+              <span *ngIf="selectedPostImage()" class="selected-filename">
+                {{ selectedPostImage()!.name }}
+              </span>
             </div>
+
+            <div *ngIf="postImagePreview()" class="image-preview-wrapper">
+              <img
+                [src]="postImagePreview()"
+                class="image-preview"
+                alt="Vista previa de la imagen a publicar" />
+            </div>
+
+            <div class="form-actions">
+              <button
+                mat-raised-button
+                color="primary"
+                type="submit"
+                [disabled]="creatingPost() || newPostForm.invalid">
+                <mat-spinner *ngIf="creatingPost()" diameter="18" class="inline-spinner"></mat-spinner>
+                <span *ngIf="!creatingPost()">Publicar</span>
+              </button>
+            </div>
+          </form>
+        </mat-card-content>
+      </mat-card>
+
+      <div *ngIf="postsLoading()" class="posts-loading">
+        <mat-spinner diameter="32"></mat-spinner>
+        <span>Cargando publicaciones...</span>
+      </div>
+
+      <p *ngIf="!postsLoading() && posts().length === 0" class="no-posts">
+        Aún no tienes publicaciones.
+      </p>
+
+      <app-post-item
+        *ngFor="let post of posts(); trackBy: trackByPostId"
+        [post]="post"
+        (postDeleted)="onPostDeleted($event)">
+      </app-post-item>
+    </div>
+
+    <!-- Columna derecha: mi perfil -->
+    <div class="profile-column">
+      <mat-card class="profile-card">
+
+        <!-- Header -->
+        <div class="profile-header">
+
+          <!-- Avatar area -->
+          <div class="avatar-wrapper">
+            <img
+              *ngIf="avatarSrc"
+              [src]="avatarSrc"
+              alt="Foto de perfil"
+              class="avatar-img"
+            />
+            <mat-icon *ngIf="!avatarSrc" class="avatar-icon">account_circle</mat-icon>
+
+            <button
+              mat-mini-fab
+              class="avatar-upload-btn"
+              type="button"
+              aria-label="Cambiar foto de perfil"
+              [disabled]="avatarUploading()"
+              (click)="triggerFileInput()"
+              matTooltip="Cambiar foto"
+            >
+              <mat-icon *ngIf="!avatarUploading()">photo_camera</mat-icon>
+              <mat-spinner *ngIf="avatarUploading()" diameter="20"></mat-spinner>
+            </button>
+
+            <input
+              #fileInput
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+              class="hidden-input"
+              aria-hidden="true"
+              (change)="onFileSelected($event)"
+            />
           </div>
 
-          <div class="field-row">
-            <mat-icon>email</mat-icon>
-            <div class="field-info">
-              <span class="field-label">Correo electrónico</span>
-              <span class="field-value">{{ user()?.email }}</span>
-            </div>
-          </div>
+          <h2 class="full-name">{{ user()?.first_name }} {{ user()?.last_name }}</h2>
+          <p class="username">@{{ user()?.username }}</p>
 
-          <div class="field-row">
-            <mat-icon>badge</mat-icon>
-            <div class="field-info">
-              <span class="field-label">Nombre</span>
-              <span class="field-value">{{ user()?.first_name }}</span>
-            </div>
-          </div>
+          <button
+            mat-stroked-button
+            class="follows-btn"
+            (click)="goToFollows()"
+            matTooltip="Ver seguidores y seguidos"
+          >
+            <span class="follows-stat">
+              <strong>{{ followersCount() }}</strong> seguidores
+            </span>
+            <span class="follows-stat">
+              <strong>{{ followingCount() }}</strong> siguiendo
+            </span>
+          </button>
 
-          <div class="field-row">
-            <mat-icon>badge</mat-icon>
-            <div class="field-info">
-              <span class="field-label">Apellido</span>
-              <span class="field-value">{{ user()?.last_name }}</span>
-            </div>
+          <div class="edit-toggle-row">
+            <mat-icon class="toggle-icon">{{ editMode() ? 'edit' : 'visibility' }}</mat-icon>
+            <span class="toggle-label-text">{{ editMode() ? 'Modo edición' : 'Solo lectura' }}</span>
+            <mat-slide-toggle
+              [checked]="editMode()"
+              (change)="toggleEditMode($event.checked)"
+              color="accent">
+            </mat-slide-toggle>
           </div>
-
-          <div class="field-row">
-            <mat-icon>cake</mat-icon>
-            <div class="field-info">
-              <span class="field-label">Edad</span>
-              <span class="field-value">{{ user()?.age }} años</span>
-            </div>
-          </div>
-
-          <div class="field-row">
-            <mat-icon [style.color]="user()?.is_active ? '#2e7d32' : '#c62828'">
-              {{ user()?.is_active ? 'check_circle' : 'cancel' }}
-            </mat-icon>
-            <div class="field-info">
-              <span class="field-label">Estado de cuenta</span>
-              <span class="field-value">{{ user()?.is_active ? 'Activa' : 'Inactiva' }}</span>
-            </div>
-          </div>
-
         </div>
 
-        <!-- MODO EDICIÓN -->
-        <form *ngIf="editMode()" [formGroup]="updateForm" (ngSubmit)="onSubmit()" novalidate class="edit-form">
+        <mat-card-content class="card-content">
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Nombre de usuario</mat-label>
-            <input matInput formControlName="username" type="text" autocomplete="username" />
-            <mat-error *ngIf="updateForm.get('username')?.hasError('required')">El nombre de usuario es obligatorio.</mat-error>
-            <mat-error *ngIf="updateForm.get('username')?.hasError('minlength')">Debe tener al menos 3 caracteres.</mat-error>
-          </mat-form-field>
+          <!-- MODO VISUALIZACIÓN -->
+          <div *ngIf="!editMode()" class="profile-fields">
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Correo electrónico</mat-label>
-            <input matInput formControlName="email" type="email" autocomplete="email" />
-            <mat-error *ngIf="updateForm.get('email')?.hasError('required')">El correo es obligatorio.</mat-error>
-            <mat-error *ngIf="updateForm.get('email')?.hasError('email')">Ingresa un correo válido.</mat-error>
-          </mat-form-field>
+            <div class="field-row">
+              <mat-icon>person</mat-icon>
+              <div class="field-info">
+                <span class="field-label">Nombre de usuario</span>
+                <span class="field-value">{{ user()?.username }}</span>
+              </div>
+            </div>
 
-          <div class="form-row-double">
-            <mat-form-field appearance="outline" class="half-width">
-              <mat-label>Nombre</mat-label>
-              <input matInput formControlName="first_name" type="text" autocomplete="given-name" />
-              <mat-error *ngIf="updateForm.get('first_name')?.hasError('required')">El nombre es obligatorio.</mat-error>
+            <div class="field-row">
+              <mat-icon>email</mat-icon>
+              <div class="field-info">
+                <span class="field-label">Correo electrónico</span>
+                <span class="field-value">{{ user()?.email }}</span>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <mat-icon>badge</mat-icon>
+              <div class="field-info">
+                <span class="field-label">Nombre</span>
+                <span class="field-value">{{ user()?.first_name }}</span>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <mat-icon>badge</mat-icon>
+              <div class="field-info">
+                <span class="field-label">Apellido</span>
+                <span class="field-value">{{ user()?.last_name }}</span>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <mat-icon>cake</mat-icon>
+              <div class="field-info">
+                <span class="field-label">Edad</span>
+                <span class="field-value">{{ user()?.age }} años</span>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <mat-icon [style.color]="user()?.is_active ? '#2e7d32' : '#c62828'">
+                {{ user()?.is_active ? 'check_circle' : 'cancel' }}
+              </mat-icon>
+              <div class="field-info">
+                <span class="field-label">Estado de cuenta</span>
+                <span class="field-value">{{ user()?.is_active ? 'Activa' : 'Inactiva' }}</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- MODO EDICIÓN -->
+          <form *ngIf="editMode()" [formGroup]="updateForm" (ngSubmit)="onSubmit()" novalidate class="edit-form">
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Nombre de usuario</mat-label>
+              <input matInput formControlName="username" type="text" autocomplete="username" />
+              <mat-error *ngIf="updateForm.get('username')?.hasError('required')">El nombre de usuario es obligatorio.</mat-error>
+              <mat-error *ngIf="updateForm.get('username')?.hasError('minlength')">Debe tener al menos 3 caracteres.</mat-error>
             </mat-form-field>
 
-            <mat-form-field appearance="outline" class="half-width">
-              <mat-label>Apellido</mat-label>
-              <input matInput formControlName="last_name" type="text" autocomplete="family-name" />
-              <mat-error *ngIf="updateForm.get('last_name')?.hasError('required')">El apellido es obligatorio.</mat-error>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Correo electrónico</mat-label>
+              <input matInput formControlName="email" type="email" autocomplete="email" />
+              <mat-error *ngIf="updateForm.get('email')?.hasError('required')">El correo es obligatorio.</mat-error>
+              <mat-error *ngIf="updateForm.get('email')?.hasError('email')">Ingresa un correo válido.</mat-error>
             </mat-form-field>
-          </div>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Edad</mat-label>
-            <input matInput formControlName="age" type="number" min="18" />
-            <mat-error *ngIf="updateForm.get('age')?.hasError('required')">La edad es obligatoria.</mat-error>
-            <mat-error *ngIf="updateForm.get('age')?.hasError('min')">Debes tener al menos 18 años.</mat-error>
-          </mat-form-field>
+            <div class="form-row-double">
+              <mat-form-field appearance="outline" class="half-width">
+                <mat-label>Nombre</mat-label>
+                <input matInput formControlName="first_name" type="text" autocomplete="given-name" />
+                <mat-error *ngIf="updateForm.get('first_name')?.hasError('required')">El nombre es obligatorio.</mat-error>
+              </mat-form-field>
 
-          <div class="toggle-row">
-            <mat-icon>toggle_on</mat-icon>
-            <span class="toggle-field-label">Cuenta activa</span>
-            <mat-slide-toggle formControlName="is_active" color="primary"></mat-slide-toggle>
-          </div>
+              <mat-form-field appearance="outline" class="half-width">
+                <mat-label>Apellido</mat-label>
+                <input matInput formControlName="last_name" type="text" autocomplete="family-name" />
+                <mat-error *ngIf="updateForm.get('last_name')?.hasError('required')">El apellido es obligatorio.</mat-error>
+              </mat-form-field>
+            </div>
 
-          <div class="submit-row">
-            <button mat-button type="button" (click)="toggleEditMode(false)">Cancelar</button>
-            <button mat-raised-button color="primary" type="submit" [disabled]="updateForm.invalid">
-              Guardar cambios
-            </button>
-          </div>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Edad</mat-label>
+              <input matInput formControlName="age" type="number" min="18" />
+              <mat-error *ngIf="updateForm.get('age')?.hasError('required')">La edad es obligatoria.</mat-error>
+              <mat-error *ngIf="updateForm.get('age')?.hasError('min')">Debes tener al menos 18 años.</mat-error>
+            </mat-form-field>
 
-        </form>
+            <div class="toggle-row">
+              <mat-icon>toggle_on</mat-icon>
+              <span class="toggle-field-label">Cuenta activa</span>
+              <mat-slide-toggle formControlName="is_active" color="primary"></mat-slide-toggle>
+            </div>
 
-      </mat-card-content>
+            <div class="submit-row">
+              <button mat-button type="button" (click)="toggleEditMode(false)">Cancelar</button>
+              <button mat-raised-button color="primary" type="submit" [disabled]="updateForm.invalid">
+                Guardar cambios
+              </button>
+            </div>
 
-    </mat-card>
+          </form>
+
+        </mat-card-content>
+
+      </mat-card>
+    </div>
+
   </div>
 
 </div>

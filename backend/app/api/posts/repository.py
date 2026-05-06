@@ -52,6 +52,29 @@ class PostRepository:
             return 0
 
     @staticmethod
+    def list_by_author(author_id: str, skip: int = 0, limit: int = 20) -> list[dict]:
+        try:
+            cursor = (
+                mongo.db.posts
+                .find({"author_id": ObjectId(author_id)})
+                .sort("created_at", DESCENDING)
+                .skip(skip)
+                .limit(limit)
+            )
+            return list(cursor)
+        except Exception as ex:
+            print(f"Error listing posts by author: {ex}")
+            return []
+
+    @staticmethod
+    def count_by_author(author_id: str) -> int:
+        try:
+            return mongo.db.posts.count_documents({"author_id": ObjectId(author_id)})
+        except Exception as ex:
+            print(f"Error counting posts by author: {ex}")
+            return 0
+
+    @staticmethod
     def delete_by_id(post_id: str) -> bool:
         try:
             result = mongo.db.posts.delete_one({"_id": ObjectId(post_id)})

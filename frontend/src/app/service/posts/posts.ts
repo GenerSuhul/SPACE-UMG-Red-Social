@@ -31,6 +31,20 @@ export class PostsService {
     return this.http.get<ListPostsResponse>(`${this.baseUrl}/`, { params });
   }
 
+  getMyPosts(page: number = 1, pageSize: number = 20): Observable<ListPostsResponse> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('page_size', pageSize.toString());
+    return this.http.get<ListPostsResponse>(`${this.baseUrl}/me`, { params });
+  }
+
+  getUserPosts(userId: string, page: number = 1, pageSize: number = 20): Observable<ListPostsResponse> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('page_size', pageSize.toString());
+    return this.http.get<ListPostsResponse>(`${this.baseUrl}/user/${userId}`, { params });
+  }
+
   getPostWithComments(postId: string): Observable<GetPostResponse> {
     return this.http.get<GetPostResponse>(`${this.baseUrl}/${postId}`);
   }

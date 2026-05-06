@@ -11,7 +11,9 @@ import { ActivatedRoute } from '@angular/router';
 import { Subject, switchMap, takeUntil } from 'rxjs';
 
 import { UsersService } from '../../../service/users/users';
+import { PostsService } from '../../../service/posts/posts';
 import { PublicUserInterface } from '../../../models/users';
+import { Post } from '../../../models/posts';
 
 @Component({
   selector: 'app-user-view',
@@ -21,15 +23,19 @@ import { PublicUserInterface } from '../../../models/users';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class UserView implements OnInit, OnDestroy {
-  loading       = signal(true);
-  notFound      = signal(false);
-  followLoading = signal(false);
-  user          = signal<PublicUserInterface | null>(null);
-  isFollowing   = signal(false);
+  loading        = signal(true);
+  notFound       = signal(false);
+  followLoading  = signal(false);
+  user           = signal<PublicUserInterface | null>(null);
+  isFollowing    = signal(false);
   followersCount = signal(0);
+
+  posts        = signal<Post[]>([]);
+  postsLoading = signal(false);
 
   private readonly route        = inject(ActivatedRoute);
   private readonly usersService = inject(UsersService);
+  private readonly postsService = inject(PostsService);
   private readonly cdr          = inject(ChangeDetectorRef);
 
   private readonly destroy$ = new Subject<void>();
@@ -43,6 +49,7 @@ export class UserView implements OnInit, OnDestroy {
         this.user.set(null);
         this.isFollowing.set(false);
         this.followersCount.set(0);
+        this.posts.set([]);
         this.cdr.markForCheck();
         return this.usersService.getUserById(id);
       }),
@@ -54,6 +61,7 @@ export class UserView implements OnInit, OnDestroy {
         this.followersCount.set(res.user.followers_count ?? 0);
         this.loading.set(false);
         this.cdr.markForCheck();
+        this.loadUserPosts(res.user.id);
       },
       error: (err: unknown) => {
         this.loading.set(false);
@@ -68,6 +76,26 @@ export class UserView implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private loadUserPosts(userId: string): void {
+    this.postsLoading.set(true);
+    this.cdr.markForCheck();
+    this.postsService.getUserPosts(userId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (res) => {
+        this.posts.set(res.posts);
+        this.postsLoading.set(false);
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.postsLoading.set(false);
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  onPostDeleted(postId: string): void {
+    this.posts.update(list => list.filter(p => p.id !== postId));
   }
 
   onToggleFollow(): void {
@@ -86,6 +114,10 @@ export class UserView implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       },
     });
+  }
+
+  trackByPostId(_index: number, post: Post): string {
+    return post.id;
   }
 
   get avatarSrc(): string | null {
