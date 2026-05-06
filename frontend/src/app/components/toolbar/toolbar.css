@@ -12,3 +12,18 @@
   letter-spacing: 0.02em;
   margin-left: 4px;
 }
+
+/* Avatar image inside the toolbar icon button */
+.toolbar-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  display: block;
+}
+
+/* Ensure the button itself is large enough to contain the circular avatar */
+.avatar-btn {
+  overflow: hidden;
+}

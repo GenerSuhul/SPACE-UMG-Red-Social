@@ -10,30 +10,34 @@ export interface ReactionsCount {
 }
 
 export interface Post {
-  id:              string;
-  author_id:       string;
-  author_username: string;
-  content:         string;
-  media_urls:      string[];
-  image_base64:    string | null;
-  image_mime:      string | null;
-  created_at:      string;
-  updated_at:      string | null;
-  reactions_count: ReactionsCount;
-  comments_count:  number;
+  id:                    string;
+  author_id:             string;
+  author_username:       string;
+  author_avatar_base64:  string | null;
+  author_avatar_mime:    string | null;
+  content:               string;
+  media_urls:            string[];
+  image_base64:          string | null;
+  image_mime:            string | null;
+  created_at:            string;
+  updated_at:            string | null;
+  reactions_count:       ReactionsCount;
+  comments_count:        number;
 }
 
 export interface Comment {
-  id:                string;
-  post_id:           string;
-  author_id:         string;
-  author_username:   string;
-  content:           string;
-  parent_comment_id: string | null;
-  image_base64:      string | null;
-  image_mime:        string | null;
-  created_at:        string;
-  reactions_count:   ReactionsCount;
+  id:                   string;
+  post_id:              string;
+  author_id:            string;
+  author_username:      string;
+  author_avatar_base64: string | null;
+  author_avatar_mime:   string | null;
+  content:              string;
+  parent_comment_id:    string | null;
+  image_base64:         string | null;
+  image_mime:           string | null;
+  created_at:           string;
+  reactions_count:      ReactionsCount;
 }
 
 export interface Reaction {

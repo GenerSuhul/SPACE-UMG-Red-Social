@@ -12,7 +12,44 @@
 
       <!-- Header -->
       <div class="profile-header">
-        <mat-icon class="avatar-icon">account_circle</mat-icon>
+
+        <!-- Avatar area -->
+        <div class="avatar-wrapper">
+          <!-- Real avatar or preview -->
+          <img
+            *ngIf="avatarSrc"
+            [src]="avatarSrc"
+            alt="Foto de perfil"
+            class="avatar-img"
+          />
+          <!-- Placeholder when no avatar -->
+          <mat-icon *ngIf="!avatarSrc" class="avatar-icon">account_circle</mat-icon>
+
+          <!-- Upload overlay button -->
+          <button
+            mat-mini-fab
+            class="avatar-upload-btn"
+            type="button"
+            aria-label="Cambiar foto de perfil"
+            [disabled]="avatarUploading()"
+            (click)="triggerFileInput()"
+            matTooltip="Cambiar foto"
+          >
+            <mat-icon *ngIf="!avatarUploading()">photo_camera</mat-icon>
+            <mat-spinner *ngIf="avatarUploading()" diameter="20"></mat-spinner>
+          </button>
+
+          <!-- Hidden file input -->
+          <input
+            #fileInput
+            type="file"
+            accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+            class="hidden-input"
+            aria-hidden="true"
+            (change)="onFileSelected($event)"
+          />
+        </div>
+
         <h2 class="full-name">{{ user()?.first_name }} {{ user()?.last_name }}</h2>
         <p class="username">@{{ user()?.username }}</p>
 

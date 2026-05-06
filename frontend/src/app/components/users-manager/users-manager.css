@@ -40,11 +40,56 @@
   gap: 4px;
 }
 
+/* Avatar wrapper — positions the camera button over the avatar */
+.avatar-wrapper {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  margin-bottom: 4px;
+}
+
+.avatar-img {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid rgba(255, 255, 255, 0.7);
+  display: block;
+}
+
 .avatar-icon {
-  font-size: 80px;
-  width: 80px;
-  height: 80px;
+  font-size: 96px;
+  width: 96px;
+  height: 96px;
   opacity: 0.9;
+  display: block;
+}
+
+/* Camera FAB overlaid at bottom-right of avatar */
+.avatar-upload-btn {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  line-height: 32px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #1976d2 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+}
+
+.avatar-upload-btn mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+}
+
+/* Hide the native file input */
+.hidden-input {
+  display: none;
 }
 
 .full-name {

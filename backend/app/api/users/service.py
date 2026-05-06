@@ -2,6 +2,7 @@ from pydantic import ValidationError
 
 from .repository import UserRepository
 from .schemas import UserSchema, UserUpdateSchema
+from backend.app.image_utils import normalize_base64_image, ImageError
 
 class UserService:
 
@@ -16,6 +17,8 @@ class UserService:
             return {"ok": False, "error": [{"field": "user", "message": "Usuario no encontrado"}]}
 
         user_found.setdefault("is_active", True)
+        user_found.setdefault("avatar_base64", None)
+        user_found.setdefault("avatar_mime", None)
         uesr_parsed = UserSchema(**user_found)
 
         return {"ok": True, "user": uesr_parsed.model_dump()}
@@ -62,6 +65,18 @@ class UserService:
                 "errors": [{"field": "body", "message": "No se enviaron campos para actualizar"}],
             }
 
+        # Validar y normalizar avatar si viene en el payload
+        if "avatar_base64" in update_fields and update_fields["avatar_base64"]:
+            try:
+                clean_b64, clean_mime = normalize_base64_image(
+                    update_fields["avatar_base64"],
+                    update_fields.get("avatar_mime"),
+                )
+            except ImageError as ex:
+                return {"ok": False, "errors": [{"field": "avatar", "message": str(ex)}]}
+            update_fields["avatar_base64"] = clean_b64
+            update_fields["avatar_mime"]   = clean_mime
+
         # Normalizar email a minúsculas (consistente con register)
         if "email" in update_fields and update_fields["email"]:
             update_fields["email"] = update_fields["email"].lower()
@@ -95,5 +110,7 @@ class UserService:
         # 9. Parsear con UserSchema (los campos no presentes podrían faltar; los
         # rellenamos para no romper la validación del schema de respuesta)
         updated_user.setdefault("is_active", True)
+        updated_user.setdefault("avatar_base64", None)
+        updated_user.setdefault("avatar_mime", None)
         user_parsed = UserSchema(**updated_user)
         return {"ok": True, "user": user_parsed.model_dump()}

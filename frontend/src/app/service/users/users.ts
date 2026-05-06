@@ -1,20 +1,69 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { Config } from '../config/config';
-import { GetUserResponse, UserInterface } from '../../models/users';
+import { GetUserResponse, UpdateAvatarResponse, UserInterface } from '../../models/users';
 
 @Injectable({ providedIn: 'root' })
 export class UsersService {
+  private readonly currentUserSubject = new BehaviorSubject<UserInterface | null>(null);
+
+  /** Emits the latest loaded user. Subscribe in toolbar / any component needing user state. */
+  readonly currentUser$ = this.currentUserSubject.asObservable();
+
   constructor(private http: HttpClient, private configService: Config) {}
 
   getUser(): Observable<GetUserResponse> {
     const url = `${this.configService.appConfig.apiUrl}/api/users/get_user`;
-    return this.http.get<GetUserResponse>(url);
+    return this.http.get<GetUserResponse>(url).pipe(
+      tap(res => {
+        if (res.ok) this.currentUserSubject.next(res.user);
+      }),
+    );
   }
 
-  updateUser(data: UserInterface): Observable<any> {
+  /** Existing JSON-body update — kept for backward compatibility. */
+  updateUser(data: Partial<UserInterface>): Observable<GetUserResponse> {
     const url = `${this.configService.appConfig.apiUrl}/api/users/update_me`;
-    return this.http.put<any>(url, data);
+    return this.http.patch<GetUserResponse>(url, data).pipe(
+      tap(res => {
+        if (res.ok) this.currentUserSubject.next(res.user);
+      }),
+    );
+  }
+
+  /** Upload a new avatar image via multipart/form-data. */
+  updateAvatar(file: File): Observable<UpdateAvatarResponse> {
+    const url = `${this.configService.appConfig.apiUrl}/api/users/update_me`;
+    const fd = new FormData();
+    fd.append('avatar', file);
+    return this.http.patch<UpdateAvatarResponse>(url, fd).pipe(
+      tap(res => {
+        if (res.ok) this.currentUserSubject.next(res.user);
+      }),
+    );
+  }
+
+  /** Combined update: profile fields + optional avatar, all in one multipart request. */
+  updateProfile(
+    data: Partial<Omit<UserInterface, 'avatar_base64' | 'avatar_mime'>>,
+    file?: File,
+  ): Observable<UpdateAvatarResponse> {
+    const url = `${this.configService.appConfig.apiUrl}/api/users/update_me`;
+    const fd = new FormData();
+    (Object.entries(data) as [string, unknown][]).forEach(([k, v]) => {
+      if (v !== undefined && v !== null) fd.append(k, String(v));
+    });
+    if (file) fd.append('avatar', file);
+    return this.http.patch<UpdateAvatarResponse>(url, fd).pipe(
+      tap(res => {
+        if (res.ok) this.currentUserSubject.next(res.user);
+      }),
+    );
+  }
+
+  /** Imperatively push a user update (e.g. after local edits). */
+  setCurrentUser(user: UserInterface): void {
+    this.currentUserSubject.next(user);
   }
 }

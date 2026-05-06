@@ -10,10 +10,7 @@ TargetType   = Literal["post", "comment"]
 # ---------------------------------------------------------------------------
 # Restricciones para imágenes embebidas en Base64
 # ---------------------------------------------------------------------------
-ALLOWED_IMAGE_MIMES = {"image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"}
-# Limite del tamaño DECODIFICADO de la imagen. 5 MB cubre fotos típicas y deja
-# margen frente al limite de 16 MB de un documento BSON.
-MAX_IMAGE_BYTES = 5 * 1024 * 1024
+from backend.app.image_utils import ALLOWED_IMAGE_MIMES, MAX_IMAGE_BYTES  # noqa: E402
 
 
 # ---------------------------------------------------------------------------

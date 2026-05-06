@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { TokenService } from '../../service/auth/token';
 import { Auth } from '../../service/auth/auth';
+import { UsersService } from '../../service/users/users';
 
 @Component({
   selector: 'app-toolbar',
@@ -11,9 +12,13 @@ import { Auth } from '../../service/auth/auth';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Toolbar {
-  private readonly router = inject(Router);
+  private readonly router       = inject(Router);
   private readonly tokenService = inject(TokenService);
-  private readonly authService = inject(Auth);
+  private readonly authService  = inject(Auth);
+  readonly usersService         = inject(UsersService);
+
+  /** Exposed for the async pipe in the template. */
+  readonly currentUser$ = this.usersService.currentUser$;
 
   logout(): void {
     this.authService.logoutUser().subscribe({
@@ -28,7 +33,7 @@ export class Toolbar {
   }
 
   goToFeed(): void {
-    this.router.navigate(['/feed'])
+    this.router.navigate(['/feed']);
   }
 
   goToUsers(): void {

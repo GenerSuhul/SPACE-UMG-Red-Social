@@ -31,45 +31,62 @@ def _iso(dt: datetime | None) -> str | None:
 
 
 def _fetch_usernames(docs: list[dict], id_field: str = "author_id") -> dict:
-    """Devuelve {str(author_id): username} para una lista de documentos."""
+    """Devuelve {str(author_id): {username, avatar_base64, avatar_mime}}."""
     ids = list({str(d[id_field]) for d in docs if d.get(id_field)})
     if not ids:
         return {}
     return UserRepository.find_many_usernames(ids)
 
 
-def _serialize_post(post: dict, author_username: str | None = None) -> dict:
+def _author_fields(profiles: dict, author_id: str) -> dict:
+    """Extrae los campos de autor desde el dict de perfiles."""
+    profile = profiles.get(str(author_id)) or {}
     return {
-        "id":              str(post["_id"]),
-        "author_id":       str(post["author_id"]),
-        "author_username": author_username,
-        "content":         post.get("content", ""),
-        "media_urls":      post.get("media_urls", []),
-        # Imagen embebida — el frontend construye el data URL.
-        "image_base64":    post.get("image_base64"),
-        "image_mime":      post.get("image_mime"),
-        "created_at":      _iso(post.get("created_at")),
-        "updated_at":      _iso(post.get("updated_at")),
-        "reactions_count": post.get("reactions_count", empty_reactions_count()),
-        "comments_count":  post.get("comments_count", 0),
+        "author_username":      profile.get("username"),
+        "author_avatar_base64": profile.get("avatar_base64"),
+        "author_avatar_mime":   profile.get("avatar_mime"),
     }
 
 
-def _serialize_comment(comment: dict, author_username: str | None = None) -> dict:
+def _serialize_post(post: dict, profiles: dict | None = None) -> dict:
+    author_id = str(post["author_id"])
+    author = _author_fields(profiles or {}, author_id)
     return {
-        "id":                str(comment["_id"]),
-        "post_id":           str(comment["post_id"]),
-        "author_id":         str(comment["author_id"]),
-        "author_username":   author_username,
-        "content":           comment.get("content", ""),
-        "parent_comment_id": (
+        "id":                   str(post["_id"]),
+        "author_id":            author_id,
+        "author_username":      author["author_username"],
+        "author_avatar_base64": author["author_avatar_base64"],
+        "author_avatar_mime":   author["author_avatar_mime"],
+        "content":              post.get("content", ""),
+        "media_urls":           post.get("media_urls", []),
+        "image_base64":         post.get("image_base64"),
+        "image_mime":           post.get("image_mime"),
+        "created_at":           _iso(post.get("created_at")),
+        "updated_at":           _iso(post.get("updated_at")),
+        "reactions_count":      post.get("reactions_count", empty_reactions_count()),
+        "comments_count":       post.get("comments_count", 0),
+    }
+
+
+def _serialize_comment(comment: dict, profiles: dict | None = None) -> dict:
+    author_id = str(comment["author_id"])
+    author = _author_fields(profiles or {}, author_id)
+    return {
+        "id":                   str(comment["_id"]),
+        "post_id":              str(comment["post_id"]),
+        "author_id":            author_id,
+        "author_username":      author["author_username"],
+        "author_avatar_base64": author["author_avatar_base64"],
+        "author_avatar_mime":   author["author_avatar_mime"],
+        "content":              comment.get("content", ""),
+        "parent_comment_id":    (
             str(comment["parent_comment_id"])
             if comment.get("parent_comment_id") else None
         ),
-        "image_base64":      comment.get("image_base64"),
-        "image_mime":        comment.get("image_mime"),
-        "created_at":        _iso(comment.get("created_at")),
-        "reactions_count":   comment.get("reactions_count", empty_reactions_count()),
+        "image_base64":         comment.get("image_base64"),
+        "image_mime":           comment.get("image_mime"),
+        "created_at":           _iso(comment.get("created_at")),
+        "reactions_count":      comment.get("reactions_count", empty_reactions_count()),
     }
 
 
@@ -158,8 +175,8 @@ class PostService:
             return {"ok": False, "errors": [{"field": "database", "message": "Error guardando el post"}]}
 
         post_doc["_id"] = ObjectId(post_id)
-        usernames = UserRepository.find_many_usernames([author_id])
-        return {"ok": True, "post": _serialize_post(post_doc, usernames.get(author_id))}
+        profiles = UserRepository.find_many_usernames([author_id])
+        return {"ok": True, "post": _serialize_post(post_doc, profiles)}
 
     @staticmethod
     def list_posts(page: int = 1, page_size: int = 20) -> dict:
@@ -169,11 +186,11 @@ class PostService:
 
         posts = PostRepository.list_posts(skip=skip, limit=page_size)
         total = PostRepository.count_posts()
-        usernames = _fetch_usernames(posts)
+        profiles = _fetch_usernames(posts)
 
         return {
             "ok": True,
-            "posts": [_serialize_post(p, usernames.get(str(p["author_id"]))) for p in posts],
+            "posts": [_serialize_post(p, profiles) for p in posts],
             "pagination": {
                 "page":       page,
                 "page_size":  page_size,
@@ -192,12 +209,12 @@ class PostService:
             return {"ok": False, "errors": [{"field": "post", "message": "Post no encontrado"}]}
 
         comments = CommentRepository.list_by_post(post_id, skip=0, limit=100)
-        usernames = _fetch_usernames([post] + comments)
+        profiles = _fetch_usernames([post] + comments)
 
         return {
             "ok": True,
-            "post":     _serialize_post(post, usernames.get(str(post["author_id"]))),
-            "comments": [_serialize_comment(c, usernames.get(str(c["author_id"]))) for c in comments],
+            "post":     _serialize_post(post, profiles),
+            "comments": [_serialize_comment(c, profiles) for c in comments],
         }
 
     @staticmethod
@@ -289,8 +306,8 @@ class CommentService:
         PostRepository.increment_comments(post_id, 1)
 
         comment_doc["_id"] = ObjectId(comment_id)
-        usernames = UserRepository.find_many_usernames([author_id])
-        return {"ok": True, "comment": _serialize_comment(comment_doc, usernames.get(author_id))}
+        profiles = UserRepository.find_many_usernames([author_id])
+        return {"ok": True, "comment": _serialize_comment(comment_doc, profiles)}
 
     @staticmethod
     def list_comments(post_id: str, page: int = 1, page_size: int = 50) -> dict:
@@ -302,10 +319,10 @@ class CommentService:
         skip = (page - 1) * page_size
 
         comments = CommentRepository.list_by_post(post_id, skip=skip, limit=page_size)
-        usernames = _fetch_usernames(comments)
+        profiles = _fetch_usernames(comments)
         return {
             "ok": True,
-            "comments": [_serialize_comment(c, usernames.get(str(c["author_id"]))) for c in comments],
+            "comments": [_serialize_comment(c, profiles) for c in comments],
             "pagination": {"page": page, "page_size": page_size},
         }
 
@@ -325,10 +342,10 @@ class CommentService:
         skip = (page - 1) * page_size
 
         replies = CommentRepository.list_replies(comment_id, skip=skip, limit=page_size)
-        usernames = _fetch_usernames(replies)
+        profiles = _fetch_usernames(replies)
         return {
             "ok": True,
-            "replies": [_serialize_comment(r, usernames.get(str(r["author_id"]))) for r in replies],
+            "replies": [_serialize_comment(r, profiles) for r in replies],
             "pagination": {"page": page, "page_size": page_size},
         }
 

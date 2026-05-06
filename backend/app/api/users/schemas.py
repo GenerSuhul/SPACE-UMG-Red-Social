@@ -1,14 +1,19 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 import re
 
+from backend.app.image_utils import ALLOWED_IMAGE_MIMES
+
+
 class UserSchema(BaseModel):
-    _id:        str
-    username:   str
-    email:      EmailStr
-    age:        int
-    first_name: str
-    last_name:  str
-    is_active:  bool
+    _id:           str
+    username:      str
+    email:         EmailStr
+    age:           int
+    first_name:    str
+    last_name:     str
+    is_active:     bool
+    avatar_base64: str | None = None
+    avatar_mime:   str | None = None
 
 
 class UserUpdateSchema(BaseModel):
@@ -19,12 +24,26 @@ class UserUpdateSchema(BaseModel):
     """
     model_config = ConfigDict(extra="forbid")
 
-    username:   str       | None = None
-    email:      EmailStr  | None = None
-    age:        int       | None = Field(default=None, ge=0, le=150)
-    first_name: str       | None = None
-    last_name:  str       | None = None
-    is_active:  bool      | None = True
+    username:      str       | None = None
+    email:         EmailStr  | None = None
+    age:           int       | None = Field(default=None, ge=0, le=150)
+    first_name:    str       | None = None
+    last_name:     str       | None = None
+    is_active:     bool      | None = True
+    avatar_base64: str       | None = None
+    avatar_mime:   str       | None = None
+
+    @field_validator("avatar_mime")
+    @classmethod
+    def validate_avatar_mime(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip().lower()
+        if cleaned not in ALLOWED_IMAGE_MIMES:
+            raise ValueError(
+                f"Tipo de imagen no permitido. Permitidos: {sorted(ALLOWED_IMAGE_MIMES)}"
+            )
+        return cleaned
 
     @field_validator("username")
     @classmethod

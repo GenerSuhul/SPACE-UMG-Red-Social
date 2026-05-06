@@ -32,14 +32,23 @@ class UserRepository:
 
     @staticmethod
     def find_many_usernames(user_ids: list) -> dict:
-        """Batch lookup ligero. Devuelve {str(_id): username}."""
+        """
+        Batch lookup. Devuelve {str(_id): {"username", "avatar_base64", "avatar_mime"}}.
+        """
         try:
             oids = [ObjectId(uid) for uid in user_ids]
             cursor = mongo.db.users.find(
                 {"_id": {"$in": oids}},
-                {"username": 1},
+                {"username": 1, "avatar_base64": 1, "avatar_mime": 1},
             )
-            return {str(u["_id"]): u.get("username", "") for u in cursor}
+            return {
+                str(u["_id"]): {
+                    "username":      u.get("username", ""),
+                    "avatar_base64": u.get("avatar_base64"),
+                    "avatar_mime":   u.get("avatar_mime"),
+                }
+                for u in cursor
+            }
         except Exception as ex:
             print(f"Error finding usernames by ids: {ex}")
             return {}

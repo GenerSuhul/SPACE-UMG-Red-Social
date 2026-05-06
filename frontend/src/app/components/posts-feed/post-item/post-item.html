@@ -2,7 +2,17 @@
 
   <!-- Post header -->
   <mat-card-header class="post-header">
-    <mat-icon mat-card-avatar class="author-avatar" aria-hidden="true">account_circle</mat-icon>
+    <img
+      *ngIf="post.author_avatar_base64"
+      mat-card-avatar
+      class="author-avatar author-avatar--img"
+      [src]="'data:' + post.author_avatar_mime + ';base64,' + post.author_avatar_base64"
+      alt="Avatar de {{ post.author_username }}" />
+    <mat-icon
+      *ngIf="!post.author_avatar_base64"
+      mat-card-avatar
+      class="author-avatar"
+      aria-hidden="true">account_circle</mat-icon>
     <mat-card-title class="author-name">
       @{{ post.author_username }}
     </mat-card-title>
@@ -134,7 +144,15 @@
         class="comment-item">
 
         <div class="comment-header">
-          <mat-icon class="comment-avatar" aria-hidden="true">account_circle</mat-icon>
+          <img
+            *ngIf="comment.author_avatar_base64"
+            class="comment-avatar comment-avatar--img"
+            [src]="'data:' + comment.author_avatar_mime + ';base64,' + comment.author_avatar_base64"
+            alt="Avatar de {{ comment.author_username }}" />
+          <mat-icon
+            *ngIf="!comment.author_avatar_base64"
+            class="comment-avatar"
+            aria-hidden="true">account_circle</mat-icon>
           <div class="comment-meta">
             <span class="comment-author">
               @{{ comment.author_username }}
@@ -248,7 +266,15 @@
               class="comment-item comment-item--reply">
 
               <div class="comment-header">
-                <mat-icon class="comment-avatar" aria-hidden="true">account_circle</mat-icon>
+                <img
+                  *ngIf="reply.author_avatar_base64"
+                  class="comment-avatar comment-avatar--img"
+                  [src]="'data:' + reply.author_avatar_mime + ';base64,' + reply.author_avatar_base64"
+                  alt="Avatar de {{ reply.author_username }}" />
+                <mat-icon
+                  *ngIf="!reply.author_avatar_base64"
+                  class="comment-avatar"
+                  aria-hidden="true">account_circle</mat-icon>
                 <div class="comment-meta">
                   <span class="comment-author">@{{ reply.author_username }}</span>
                   <span class="comment-date">{{ formatDate(reply.created_at) }}</span>

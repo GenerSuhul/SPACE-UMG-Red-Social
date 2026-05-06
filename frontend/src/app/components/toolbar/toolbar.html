@@ -4,9 +4,28 @@
   </button>
   <span class="app-title">Red Social</span>
   <span class="spacer"></span>
-  <button mat-icon-button aria-label="Ir a usuarios" (click)="goToUsers()">
-    <mat-icon>manage_accounts</mat-icon>
+
+  <!-- Avatar button — navigates to user profile -->
+  <button
+    mat-icon-button
+    aria-label="Ir a mi perfil"
+    (click)="goToUsers()"
+    class="avatar-btn"
+    matTooltip="Mi perfil"
+  >
+    <ng-container *ngIf="currentUser$ | async as user">
+      <img
+        *ngIf="user.avatar_base64"
+        [src]="'data:' + user.avatar_mime + ';base64,' + user.avatar_base64"
+        alt="Foto de perfil"
+        class="toolbar-avatar"
+      />
+      <mat-icon *ngIf="!user.avatar_base64">account_circle</mat-icon>
+    </ng-container>
+    <!-- Shown before user data is loaded -->
+    <mat-icon *ngIf="!(currentUser$ | async)">manage_accounts</mat-icon>
   </button>
+
   <button mat-icon-button aria-label="Cerrar sesión" (click)="logout()">
     <mat-icon>logout</mat-icon>
   </button>
