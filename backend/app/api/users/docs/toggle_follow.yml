@@ -1,29 +1,35 @@
-summary: Obtener perfil público de un usuario por id
+summary: Toggle follow / unfollow de un usuario
 description: >
-  Devuelve el perfil público de cualquier usuario a partir de su id.
-  No expone datos sensibles como email o estado de cuenta.
-  Útil para mostrar el perfil de un usuario antes de interactuar con él.
+  Si el usuario autenticado NO sigue a `target_user_id`, lo agrega a su lista
+  `following` y se agrega a sí mismo en la lista `followers` del target.
+  Si YA lo sigue, elimina ambas referencias. La acción ejecutada se devuelve
+  en el campo `action` ("followed" | "unfollowed"), junto con los conteos
+  finales de followers/following del target.
 tags:
   - Users
 security:
   - BearerAuth: []
 parameters:
   - in: path
-    name: user_id
+    name: target_user_id
     required: true
     schema:
       type: string
-    description: ObjectId del usuario
+    description: ObjectId del usuario a seguir / dejar de seguir
 responses:
   200:
-    description: Perfil público del usuario
+    description: Toggle aplicado correctamente
     schema:
       type: object
       properties:
         ok:
           type: boolean
           example: true
-        user:
+        action:
+          type: string
+          enum: [followed, unfollowed]
+          example: followed
+        target_user:
           type: object
           properties:
             id:
@@ -38,25 +44,14 @@ responses:
             last_name:
               type: string
               example: "Doe"
-            age:
-              type: integer
-              example: 25
-            avatar_base64:
-              type: string
-              nullable: true
-              example: null
-            avatar_mime:
-              type: string
-              nullable: true
-              example: null
-            is_following:
-              type: boolean
-              example: false
-              description: >
-                true si el usuario autenticado ya sigue a este usuario.
-                Siempre false cuando se consulta el propio perfil.
+        followers_count:
+          type: integer
+          example: 5
+        following_count:
+          type: integer
+          example: 3
   400:
-    description: Id de usuario inválido
+    description: Id inválido, intento de auto-seguirse o error al persistir
     schema:
       type: object
       properties:
@@ -73,7 +68,7 @@ responses:
               message:
                 type: string
   404:
-    description: Usuario no encontrado
+    description: Usuario objetivo no encontrado
     schema:
       type: object
       properties:
@@ -84,5 +79,10 @@ responses:
           type: array
           items:
             type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
   401:
     description: Token JWT ausente o inválido

@@ -19,6 +19,7 @@ import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatTabsModule } from '@angular/material/tabs';
 
 const materialModules = [
   MatCardModule,
@@ -39,6 +40,7 @@ const materialModules = [
   MatBadgeModule,
   MatMenuModule,
   MatAutocompleteModule,
+  MatTabsModule,
 ];
 
 @NgModule({

@@ -53,6 +53,21 @@
         <h2 class="full-name">{{ user()?.first_name }} {{ user()?.last_name }}</h2>
         <p class="username">@{{ user()?.username }}</p>
 
+        <button
+          mat-stroked-button
+          class="follows-btn"
+          (click)="goToFollows()"
+          matTooltip="Ver seguidores y seguidos"
+        >
+          <span class="follows-stat">
+            <strong>{{ followersCount() }}</strong> seguidores
+          </span>
+          <mat-divider [vertical]="true" class="stat-divider"></mat-divider>
+          <span class="follows-stat">
+            <strong>{{ followingCount() }}</strong> siguiendo
+          </span>
+        </button>
+
         <div class="edit-toggle-row">
           <mat-icon class="toggle-icon">{{ editMode() ? 'edit' : 'visibility' }}</mat-icon>
           <span class="toggle-label-text">{{ editMode() ? 'Modo edición' : 'Solo lectura' }}</span>

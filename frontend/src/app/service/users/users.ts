@@ -3,8 +3,10 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { Config } from '../config/config';
 import {
+  FollowToggleResponse,
   GetPublicUserResponse,
   GetUserResponse,
+  MyFollowsResponse,
   SearchUsersResponse,
   UpdateAvatarResponse,
   UserInterface,
@@ -79,6 +81,18 @@ export class UsersService {
   getUserById(userId: string): Observable<GetPublicUserResponse> {
     const url = `${this.configService.appConfig.apiUrl}/api/users/${userId}`;
     return this.http.get<GetPublicUserResponse>(url);
+  }
+
+  /** Fetch the authenticated user's full followers and following lists. */
+  getMyFollows(): Observable<MyFollowsResponse> {
+    const url = `${this.configService.appConfig.apiUrl}/api/users/me/follows`;
+    return this.http.get<MyFollowsResponse>(url);
+  }
+
+  /** Toggle follow/unfollow for any user by id. */
+  toggleFollow(targetUserId: string): Observable<FollowToggleResponse> {
+    const url = `${this.configService.appConfig.apiUrl}/api/users/follow/${targetUserId}`;
+    return this.http.post<FollowToggleResponse>(url, {});
   }
 
   /** Imperatively push a user update (e.g. after local edits). */

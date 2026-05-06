@@ -11,13 +11,39 @@ export interface UserInterface {
 
 /** Minimal public representation returned by /api/users/search and /api/users/<id>. */
 export interface PublicUserInterface {
-  id:            string;
-  username:      string;
-  first_name:    string;
-  last_name:     string;
-  age:           number;
-  avatar_base64: string | null;
-  avatar_mime:   string | null;
+  id:              string;
+  username:        string;
+  first_name:      string;
+  last_name:       string;
+  age:             number;
+  avatar_base64:   string | null;
+  avatar_mime:     string | null;
+  is_following?:   boolean;
+  followers_count?: number;
+  following_count?: number;
+}
+
+export interface FollowToggleResponse {
+  ok:              boolean;
+  action:          'followed' | 'unfollowed';
+  target_user:     { id: string; username: string; first_name: string; last_name: string };
+  followers_count: number;
+  following_count: number;
+}
+
+export interface FollowUser {
+  id:         string;
+  username:   string;
+  first_name: string;
+  last_name:  string;
+}
+
+export interface MyFollowsResponse {
+  ok:              boolean;
+  followers_count: number;
+  following_count: number;
+  followers:       FollowUser[];
+  following:       FollowUser[];
 }
 
 export interface GetUserResponse {

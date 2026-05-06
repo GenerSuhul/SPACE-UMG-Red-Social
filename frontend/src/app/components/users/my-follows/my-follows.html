@@ -1,0 +1,103 @@
+<div class="page-wrapper">
+
+  <div class="follows-container">
+
+    <!-- Encabezado -->
+    <div class="follows-header">
+      <button mat-icon-button (click)="goBack()" aria-label="Volver a mi perfil" matTooltip="Volver">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h2 class="follows-title">Seguidores y seguidos</h2>
+    </div>
+
+    <!-- Carga -->
+    <div *ngIf="loading()" class="state-center">
+      <mat-spinner diameter="48"></mat-spinner>
+    </div>
+
+    <!-- Tabs -->
+    <mat-tab-group *ngIf="!loading()" animationDuration="200ms" class="follows-tabs">
+
+      <!-- ── TAB: Seguidores ── -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon class="tab-icon">group</mat-icon>
+          Seguidores ({{ followersCount() }})
+        </ng-template>
+
+        <div class="tab-content">
+          <div *ngIf="followers().length === 0" class="empty-state">
+            <mat-icon>person_off</mat-icon>
+            <p>Nadie te sigue aún.</p>
+          </div>
+
+          <mat-list *ngIf="followers().length > 0">
+            <mat-list-item
+              *ngFor="let u of followers()"
+              class="follow-item"
+              (click)="goToProfile(u.id)"
+              (keydown.enter)="goToProfile(u.id)"
+              tabindex="0"
+              role="button"
+            >
+              <mat-icon matListItemIcon>account_circle</mat-icon>
+              <span matListItemTitle>{{ u.first_name }} {{ u.last_name }}</span>
+              <span matListItemLine>@{{ u.username }}</span>
+            </mat-list-item>
+          </mat-list>
+        </div>
+      </mat-tab>
+
+      <!-- ── TAB: Siguiendo ── -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon class="tab-icon">person_add</mat-icon>
+          Siguiendo ({{ followingCount() }})
+        </ng-template>
+
+        <div class="tab-content">
+          <div *ngIf="following().length === 0" class="empty-state">
+            <mat-icon>person_search</mat-icon>
+            <p>No sigues a nadie aún.</p>
+          </div>
+
+          <mat-list *ngIf="following().length > 0">
+            <mat-list-item
+              *ngFor="let u of following()"
+              class="follow-item"
+            >
+              <mat-icon matListItemIcon>account_circle</mat-icon>
+              <span matListItemTitle
+                (click)="goToProfile(u.id)"
+                (keydown.enter)="goToProfile(u.id)"
+                tabindex="0"
+                role="button"
+                class="clickable-name"
+              >{{ u.first_name }} {{ u.last_name }}</span>
+              <span matListItemLine>@{{ u.username }}</span>
+
+              <button
+                matListItemMeta
+                mat-stroked-button
+                color="warn"
+                class="unfollow-btn"
+                [disabled]="unfollowingId() === u.id"
+                (click)="onUnfollow(u)"
+                matTooltip="Dejar de seguir"
+              >
+                <mat-spinner *ngIf="unfollowingId() === u.id" diameter="16"></mat-spinner>
+                <ng-container *ngIf="unfollowingId() !== u.id">
+                  <mat-icon>person_remove</mat-icon>
+                  Dejar de seguir
+                </ng-container>
+              </button>
+            </mat-list-item>
+          </mat-list>
+        </div>
+      </mat-tab>
+
+    </mat-tab-group>
+
+  </div>
+
+</div>

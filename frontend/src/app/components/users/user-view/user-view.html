@@ -28,8 +28,29 @@
           <mat-icon *ngIf="!avatarSrc" class="avatar-icon">account_circle</mat-icon>
         </div>
 
-        <h2 class="full-name">{{ user()?.first_name }} {{ user()?.last_name }}</h2>
+        <div class="name-follow-row">
+          <h2 class="full-name">{{ user()?.first_name }} {{ user()?.last_name }}</h2>
+          <button
+            mat-stroked-button
+            class="follow-btn"
+            [class.following]="isFollowing()"
+            [disabled]="followLoading()"
+            (click)="onToggleFollow()"
+            [matTooltip]="isFollowing() ? 'Dejar de seguir' : 'Seguir'"
+          >
+            <mat-spinner *ngIf="followLoading()" diameter="18" class="btn-spinner"></mat-spinner>
+            <ng-container *ngIf="!followLoading()">
+              <mat-icon>{{ isFollowing() ? 'person_remove' : 'person_add' }}</mat-icon>
+              {{ isFollowing() ? 'Siguiendo' : 'Seguir' }}
+            </ng-container>
+          </button>
+        </div>
+
         <p class="username">@{{ user()?.username }}</p>
+
+        <p class="followers-count">
+          <span>{{ followersCount() }} {{ followersCount() === 1 ? 'seguidor' : 'seguidores' }}</span>
+        </p>
       </div>
 
       <mat-card-content class="card-content">

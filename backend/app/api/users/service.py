@@ -158,7 +158,7 @@ class UserService:
         }
 
     @staticmethod
-    def get_public_profile(user_id: str) -> dict:
+    def get_public_profile(user_id: str, current_user_id: str | None = None) -> dict:
         if not user_id or not UserService._is_valid_object_id(user_id):
             return {"ok": False, "errors": [{"field": "user_id", "message": "Id de usuario inválido"}]}
 
@@ -166,4 +166,102 @@ class UserService:
         if not user:
             return {"ok": False, "errors": [{"field": "user", "message": "Usuario no encontrado"}]}
 
-        return {"ok": True, "user": UserService._serialize_public(user)}
+        is_following = (
+            UserRepository.is_following(current_user_id, user_id)
+            if current_user_id and current_user_id != user_id
+            else False
+        )
+
+        profile = UserService._serialize_public(user)
+        profile["is_following"] = is_following
+        return {"ok": True, "user": profile}
+
+    # ------------------------------------------------------------------
+    # Followers / Following
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _serialize_follow_info(user: dict) -> dict:
+        """Subdocumento que se persiste en las listas `followers` / `following`."""
+        return {
+            "id":         str(user["_id"]),
+            "username":   user.get("username", ""),
+            "first_name": user.get("first_name", ""),
+            "last_name":  user.get("last_name", ""),
+        }
+
+    @staticmethod
+    def get_my_follow_lists(user_id: str) -> dict:
+        if not user_id or not UserService._is_valid_object_id(user_id):
+            return {"ok": False, "errors": [{"field": "id", "message": "Id no válido"}]}
+
+        lists = UserRepository.get_follow_lists(user_id)
+        if lists is None:
+            return {"ok": False, "errors": [{"field": "user", "message": "Usuario no encontrado"}]}
+
+        return {
+            "ok":              True,
+            "followers":       lists["followers"],
+            "following":       lists["following"],
+            "followers_count": len(lists["followers"]),
+            "following_count": len(lists["following"]),
+        }
+
+    @staticmethod
+    def toggle_follow(current_user_id: str, target_user_id: str) -> dict:
+        """
+        Toggle follow / unfollow entre el usuario autenticado y `target_user_id`.
+
+        - Si current_user NO sigue a target_user → lo agrega (action='followed').
+        - Si current_user YA sigue a target_user → lo elimina (action='unfollowed').
+        Devuelve siempre los conteos finales del target_user.
+        """
+        # 1. Validar formato de ids
+        if not current_user_id or not UserService._is_valid_object_id(current_user_id):
+            return {"ok": False, "errors": [{"field": "current_user", "message": "Id del usuario autenticado inválido"}]}
+        if not target_user_id or not UserService._is_valid_object_id(target_user_id):
+            return {"ok": False, "errors": [{"field": "target_user_id", "message": "Id de usuario inválido"}]}
+
+        # 2. No permitir auto-seguirse
+        if str(current_user_id) == str(target_user_id):
+            return {"ok": False, "errors": [{"field": "target_user_id", "message": "No puedes seguirte a ti mismo"}]}
+
+        # 3. Verificar existencia del target
+        target_user = UserRepository.find_by_id(target_user_id)
+        if not target_user:
+            return {"ok": False, "errors": [{"field": "user", "message": "Usuario no encontrado"}]}
+
+        # 4. Verificar existencia del current
+        current_user = UserRepository.find_by_id(current_user_id)
+        if not current_user:
+            return {"ok": False, "errors": [{"field": "user", "message": "Usuario autenticado no encontrado"}]}
+
+        # 5. Resolver acción según estado actual
+        already_following = UserRepository.is_following(current_user_id, target_user_id)
+
+        target_info  = UserService._serialize_follow_info(target_user)
+        current_info = UserService._serialize_follow_info(current_user)
+
+        if already_following:
+            ok = UserRepository.remove_follow(current_user_id, target_user_id)
+            action = "unfollowed"
+        else:
+            ok = UserRepository.add_follow(
+                current_user_id, current_info, target_user_id, target_info
+            )
+            action = "followed"
+
+        if not ok:
+            return {
+                "ok": False,
+                "errors": [{"field": "database", "message": "Error actualizando follow"}],
+            }
+
+        counts = UserRepository.get_follow_counts(target_user_id)
+        return {
+            "ok":              True,
+            "action":          action,
+            "target_user":     target_info,
+            "followers_count": counts["followers_count"],
+            "following_count": counts["following_count"],
+        }

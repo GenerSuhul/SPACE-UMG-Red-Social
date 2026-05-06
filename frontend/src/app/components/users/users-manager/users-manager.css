@@ -104,6 +104,30 @@
   margin: 0 0 16px;
 }
 
+.follows-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: white;
+  border-color: rgba(255, 255, 255, 0.5);
+  margin: 4px 0 8px;
+  padding: 6px 20px;
+}
+
+.follows-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.follows-stat {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.stat-divider {
+  height: 18px;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
 .edit-toggle-row {
   display: flex;
   align-items: center;

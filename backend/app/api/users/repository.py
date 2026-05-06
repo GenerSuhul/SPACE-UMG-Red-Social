@@ -87,3 +87,127 @@ class UserRepository:
         except Exception as ex:
             print(f"Error updating user by id: {ex}")
             return None
+
+    # ------------------------------------------------------------------
+    # Followers / Following
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def is_following(current_user_id: str, target_user_id: str) -> bool:
+        """
+        True si el documento de current_user contiene a target_user_id en su
+        lista `following` (comparando el campo `id` del subdocumento).
+        """
+        try:
+            doc = mongo.db.users.find_one(
+                {
+                    "_id": ObjectId(current_user_id),
+                    "following.id": target_user_id,
+                },
+                {"_id": 1},
+            )
+            return doc is not None
+        except Exception as ex:
+            print(f"Error checking is_following: {ex}")
+            return False
+
+    @staticmethod
+    def add_follow(
+        current_user_id: str,
+        current_user_info: dict,
+        target_user_id: str,
+        target_user_info: dict,
+    ) -> bool:
+        """
+        Agrega target_user_info a `following` de current_user y current_user_info
+        a `followers` de target_user. Devuelve True si ambos updates impactaron
+        un documento.
+        """
+        try:
+            res_current = mongo.db.users.update_one(
+                {"_id": ObjectId(current_user_id)},
+                {
+                    "$push": {"following": target_user_info},
+                    "$set":  {"updated_at": datetime.now(timezone.utc)},
+                },
+            )
+            res_target = mongo.db.users.update_one(
+                {"_id": ObjectId(target_user_id)},
+                {
+                    "$push": {"followers": current_user_info},
+                    "$set":  {"updated_at": datetime.now(timezone.utc)},
+                },
+            )
+            return res_current.matched_count > 0 and res_target.matched_count > 0
+        except Exception as ex:
+            print(f"Error adding follow: {ex}")
+            return False
+
+    @staticmethod
+    def remove_follow(current_user_id: str, target_user_id: str) -> bool:
+        """
+        Elimina el subdocumento con `id == target_user_id` de `following` del
+        current_user y el subdocumento con `id == current_user_id` de
+        `followers` del target_user.
+        """
+        try:
+            res_current = mongo.db.users.update_one(
+                {"_id": ObjectId(current_user_id)},
+                {
+                    "$pull": {"following": {"id": target_user_id}},
+                    "$set":  {"updated_at": datetime.now(timezone.utc)},
+                },
+            )
+            res_target = mongo.db.users.update_one(
+                {"_id": ObjectId(target_user_id)},
+                {
+                    "$pull": {"followers": {"id": current_user_id}},
+                    "$set":  {"updated_at": datetime.now(timezone.utc)},
+                },
+            )
+            return res_current.matched_count > 0 and res_target.matched_count > 0
+        except Exception as ex:
+            print(f"Error removing follow: {ex}")
+            return False
+
+    @staticmethod
+    def get_follow_lists(user_id: str) -> dict | None:
+        """
+        Devuelve {"followers": [...], "following": [...]} para el usuario.
+        Retorna None si el usuario no existe o falla la consulta.
+        """
+        try:
+            doc = mongo.db.users.find_one(
+                {"_id": ObjectId(user_id)},
+                {"followers": 1, "following": 1},
+            )
+            if not doc:
+                return None
+            return {
+                "followers": doc.get("followers", []) or [],
+                "following": doc.get("following", []) or [],
+            }
+        except Exception as ex:
+            print(f"Error getting follow lists: {ex}")
+            return None
+
+    @staticmethod
+    def get_follow_counts(user_id: str) -> dict:
+        """
+        Devuelve {"followers_count": int, "following_count": int} para el usuario.
+        Si el usuario no existe o falla la consulta, devuelve ceros.
+        """
+        try:
+            doc = mongo.db.users.find_one(
+                {"_id": ObjectId(user_id)},
+                {"followers": 1, "following": 1},
+            )
+            if not doc:
+                return {"followers_count": 0, "following_count": 0}
+            return {
+                "followers_count": len(doc.get("followers", []) or []),
+                "following_count": len(doc.get("following", []) or []),
+            }
+        except Exception as ex:
+            print(f"Error getting follow counts: {ex}")
+            return {"followers_count": 0, "following_count": 0}

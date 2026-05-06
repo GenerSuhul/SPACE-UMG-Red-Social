@@ -9,6 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 
 import { UsersService } from '../../../service/users/users';
@@ -29,11 +30,12 @@ const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 export class UsersManager implements OnInit {
   @ViewChild('fileInput') private fileInputRef!: ElementRef<HTMLInputElement>;
 
-  loading         = signal(true);
-  editMode        = signal(false);
-  avatarUploading = signal(false);
-  /** Local preview URL created via URL.createObjectURL — null when no pending file. */
-  previewUrl      = signal<string | null>(null);
+  loading          = signal(true);
+  editMode         = signal(false);
+  avatarUploading  = signal(false);
+  previewUrl       = signal<string | null>(null);
+  followersCount   = signal(0);
+  followingCount   = signal(0);
 
   user = signal<UserInterface | null>(null);
 
@@ -41,6 +43,7 @@ export class UsersManager implements OnInit {
 
   private readonly usersService = inject(UsersService);
   private readonly dialog       = inject(MatDialog);
+  private readonly router       = inject(Router);
   private readonly cdr          = inject(ChangeDetectorRef);
 
   constructor(private fb: FormBuilder) {
@@ -71,6 +74,18 @@ export class UsersManager implements OnInit {
         });
       },
     });
+
+    this.usersService.getMyFollows().subscribe({
+      next: (res) => {
+        this.followersCount.set(res.followers_count);
+        this.followingCount.set(res.following_count);
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  goToFollows(): void {
+    this.router.navigate(['/users/follows']);
   }
 
   /** Returns the data-URI to display: local preview takes priority over stored avatar. */

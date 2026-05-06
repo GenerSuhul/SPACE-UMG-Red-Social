@@ -1,0 +1,59 @@
+summary: Mis seguidores y seguidos
+description: >
+  Devuelve las listas completas de seguidores (`followers`) y seguidos (`following`)
+  del usuario autenticado, junto con sus conteos.
+tags:
+  - Users
+security:
+  - BearerAuth: []
+responses:
+  200:
+    description: Listas de seguidores y seguidos
+    schema:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
+        followers_count:
+          type: integer
+          example: 3
+        following_count:
+          type: integer
+          example: 5
+        followers:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                example: "64b1f2c3d4e5f6a7b8c9d0e1"
+              username:
+                type: string
+                example: "alice"
+              first_name:
+                type: string
+                example: "Alice"
+              last_name:
+                type: string
+                example: "Johnson"
+        following:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                example: "64b1f2c3d4e5f6a7b8c9d0e2"
+              username:
+                type: string
+                example: "bob"
+              first_name:
+                type: string
+                example: "Bob"
+              last_name:
+                type: string
+                example: "Smith"
+  401:
+    description: Token JWT ausente o inválido

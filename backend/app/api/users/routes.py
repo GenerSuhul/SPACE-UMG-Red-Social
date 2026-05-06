@@ -101,10 +101,43 @@ def search_users():
 @swag_from('docs/get_user_by_id.yml')
 def get_user_by_id(user_id: str):
     """Devuelve el perfil público de cualquier usuario por su id."""
-    result = UserService.get_public_profile(user_id)
+    current_user_id = get_jwt_identity()
+    result = UserService.get_public_profile(user_id, current_user_id)
     if not result["ok"]:
         errors = result.get("errors", [])
         if any(err.get("field") == "user" for err in errors):
             return js(result), 404
         return js(result), 400
+    return js(result), 200
+
+
+@user_bp.route('/me/follows', methods=['GET'])
+@jwt_required()
+@swag_from('docs/my_follows.yml')
+def my_follows():
+    """Devuelve las listas de seguidores y seguidos del usuario autenticado."""
+    user_id = get_jwt_identity()
+    result = UserService.get_my_follow_lists(user_id)
+    if not result["ok"]:
+        return js(result), 400
+    return js(result), 200
+
+
+@user_bp.route('/follow/<target_user_id>', methods=['POST'])
+@jwt_required()
+@swag_from('docs/toggle_follow.yml')
+def toggle_follow(target_user_id: str):
+    """
+    Toggle follow/unfollow del usuario autenticado sobre `target_user_id`.
+    Si ya lo sigue → unfollow; si no → follow.
+    """
+    current_user_id = get_jwt_identity()
+    result = UserService.toggle_follow(current_user_id, target_user_id)
+
+    if not result["ok"]:
+        errors = result.get("errors", [])
+        if any(err.get("field") == "user" for err in errors):
+            return js(result), 404
+        return js(result), 400
+
     return js(result), 200

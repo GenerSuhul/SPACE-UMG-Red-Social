@@ -75,16 +75,53 @@
   display: block;
 }
 
+.name-follow-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
 .full-name {
-  margin: 0 0 2px;
+  margin: 0;
   font-size: 22px;
   font-weight: 600;
+}
+
+.follow-btn {
+  color: white;
+  border-color: rgba(255, 255, 255, 0.7);
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.follow-btn.following {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.follow-btn mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.btn-spinner {
+  display: inline-block;
 }
 
 .username {
   font-size: 14px;
   opacity: 0.75;
   margin: 0;
+}
+
+.followers-count {
+  font-size: 13px;
+  opacity: 0.85;
+  margin: 2px 0 0;
 }
 
 /* Card content */
