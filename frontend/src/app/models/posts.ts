@@ -9,6 +9,11 @@ export interface ReactionsCount {
   angry: number;
 }
 
+export interface PostImage {
+  base64: string;
+  mime:   string;
+}
+
 export interface Post {
   id:                    string;
   author_id:             string;
@@ -17,8 +22,7 @@ export interface Post {
   author_avatar_mime:    string | null;
   content:               string;
   media_urls:            string[];
-  image_base64:          string | null;
-  image_mime:            string | null;
+  images:                PostImage[];
   created_at:            string;
   updated_at:            string | null;
   reactions_count:       ReactionsCount;
@@ -50,9 +54,9 @@ export interface Reaction {
 }
 
 export interface Pagination {
-  page:        number;
-  page_size:   number;
-  total?:      number;
+  page:         number;
+  page_size:    number;
+  total?:       number;
   total_pages?: number;
 }
 
@@ -83,6 +87,11 @@ export interface ListRepliesResponse {
 }
 
 export interface CreatePostResponse {
+  ok:   boolean;
+  post: Post;
+}
+
+export interface UpdatePostResponse {
   ok:   boolean;
   post: Post;
 }

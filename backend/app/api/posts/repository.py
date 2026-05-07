@@ -75,6 +75,18 @@ class PostRepository:
             return 0
 
     @staticmethod
+    def update_by_id(post_id: str, update_fields: dict) -> dict | None:
+        try:
+            return mongo.db.posts.find_one_and_update(
+                {"_id": ObjectId(post_id)},
+                {"$set": update_fields},
+                return_document=ReturnDocument.AFTER,
+            )
+        except Exception as ex:
+            print(f"Error updating post: {ex}")
+            return None
+
+    @staticmethod
     def delete_by_id(post_id: str) -> bool:
         try:
             result = mongo.db.posts.delete_one({"_id": ObjectId(post_id)})

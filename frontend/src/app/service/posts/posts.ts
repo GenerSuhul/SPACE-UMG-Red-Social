@@ -8,6 +8,7 @@ import {
   ListCommentsResponse,
   ListRepliesResponse,
   CreatePostResponse,
+  UpdatePostResponse,
   CreateCommentResponse,
   ReactionResponse,
   DeleteResponse,
@@ -49,13 +50,23 @@ export class PostsService {
     return this.http.get<GetPostResponse>(`${this.baseUrl}/${postId}`);
   }
 
-  createPost(content: string, image?: File): Observable<CreatePostResponse> {
+  createPost(content: string, files: File[] = []): Observable<CreatePostResponse> {
     const fd = new FormData();
     fd.append('content', content);
-    if (image) {
-      fd.append('image', image);
-    }
+    files.forEach(f => fd.append('images', f));
     return this.http.post<CreatePostResponse>(`${this.baseUrl}/`, fd);
+  }
+
+  updatePost(postId: string, content?: string, files?: File[], clearImages = false): Observable<UpdatePostResponse> {
+    if (clearImages) {
+      const body: Record<string, unknown> = { images: [] };
+      if (content !== undefined) body['content'] = content;
+      return this.http.patch<UpdatePostResponse>(`${this.baseUrl}/${postId}`, body);
+    }
+    const fd = new FormData();
+    if (content !== undefined) fd.append('content', content);
+    files?.forEach(f => fd.append('images', f));
+    return this.http.patch<UpdatePostResponse>(`${this.baseUrl}/${postId}`, fd);
   }
 
   deletePost(postId: string): Observable<DeleteResponse> {

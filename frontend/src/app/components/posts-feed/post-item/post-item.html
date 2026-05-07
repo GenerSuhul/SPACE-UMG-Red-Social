@@ -18,9 +18,9 @@
     </mat-card-title>
     <mat-card-subtitle>{{ formatDate(post.created_at) }}</mat-card-subtitle>
 
-    <!-- Post menu — only visible to the post author -->
+    <!-- Post menu — only visible to the post author in interactive mode -->
     <button
-      *ngIf="isOwner(post.author_id)"
+      *ngIf="interactive && isOwner(post.author_id)"
       mat-icon-button
       class="post-menu-btn"
       [matMenuTriggerFor]="postMenu"
@@ -28,6 +28,10 @@
       <mat-icon>more_vert</mat-icon>
     </button>
     <mat-menu #postMenu="matMenu">
+      <button mat-menu-item (click)="startEdit()" [disabled]="deletingPost()">
+        <mat-icon>edit</mat-icon>
+        <span>Editar publicación</span>
+      </button>
       <button mat-menu-item (click)="deletePost()" [disabled]="deletingPost()">
         <mat-icon color="warn">delete</mat-icon>
         <span>Eliminar publicacion</span>
@@ -35,37 +39,140 @@
     </mat-menu>
   </mat-card-header>
 
-  <!-- Post content -->
+  <!-- Post content / edit form -->
   <mat-card-content class="post-content">
-    <p class="content-text">{{ post.content }}</p>
 
-    <!-- Post image -->
-    <div *ngIf="post.image_base64" class="post-image-wrapper">
-      <img
-        [src]="'data:' + post.image_mime + ';base64,' + post.image_base64"
-        class="post-image"
-        alt="Imagen de la publicacion" />
-    </div>
+    <!-- Vista normal -->
+    <ng-container *ngIf="!editMode()">
+      <p class="content-text">{{ post.content }}</p>
 
-    <!-- Media thumbnails (legacy URL-based) -->
-    <div *ngIf="post.media_urls.length > 0" class="media-row">
-      <a
-        *ngFor="let url of post.media_urls"
-        [href]="url"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="media-link"
-        aria-label="Ver archivo adjunto">
-        <mat-icon>attach_file</mat-icon>
-        <span class="media-url-text">{{ url }}</span>
-      </a>
-    </div>
+      <!-- Galería de imágenes -->
+      <div *ngIf="post.images.length > 0" class="post-images-grid">
+        <div
+          *ngFor="let img of post.images"
+          class="post-image-item">
+          <img
+            [src]="'data:' + img.mime + ';base64,' + img.base64"
+            class="post-image"
+            alt="Imagen de la publicacion" />
+        </div>
+      </div>
+
+      <div *ngIf="post.media_urls.length > 0" class="media-row">
+        <a
+          *ngFor="let url of post.media_urls"
+          [href]="url"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="media-link"
+          aria-label="Ver archivo adjunto">
+          <mat-icon>attach_file</mat-icon>
+          <span class="media-url-text">{{ url }}</span>
+        </a>
+      </div>
+    </ng-container>
+
+    <!-- Formulario de edición -->
+    <form *ngIf="editMode()" [formGroup]="editForm" (ngSubmit)="submitEdit()" novalidate class="edit-post-form">
+
+      <mat-form-field appearance="outline" class="edit-content-field">
+        <mat-label>Contenido</mat-label>
+        <textarea
+          matInput
+          formControlName="content"
+          rows="4"
+          aria-label="Editar contenido de la publicación">
+        </textarea>
+        <mat-error *ngIf="editForm.get('content')?.hasError('required')">
+          El contenido es obligatorio.
+        </mat-error>
+        <mat-error *ngIf="editForm.get('content')?.hasError('maxlength')">
+          Máximo 5000 caracteres.
+        </mat-error>
+      </mat-form-field>
+
+      <!-- Imágenes actuales del post (cuando no hay nuevas seleccionadas ni se van a borrar) -->
+      <div
+        *ngIf="post.images.length > 0 && editImagePreviews().length === 0 && !editClearImages()"
+        class="edit-current-images">
+        <p class="edit-section-label">Imágenes actuales</p>
+        <div class="edit-current-images-grid">
+          <div *ngFor="let img of post.images" class="edit-thumb-wrapper">
+            <img
+              [src]="'data:' + img.mime + ';base64,' + img.base64"
+              class="edit-image-thumb"
+              alt="Imagen actual" />
+          </div>
+        </div>
+        <button mat-stroked-button color="warn" type="button" (click)="clearAllEditImages()">
+          <mat-icon>delete_sweep</mat-icon> Eliminar todas las imágenes
+        </button>
+      </div>
+
+      <!-- Indicador: imágenes serán eliminadas -->
+      <p *ngIf="editClearImages()" class="edit-remove-indicator">
+        <mat-icon>image_not_supported</mat-icon> Las imágenes serán eliminadas al guardar.
+      </p>
+
+      <!-- Previews de nuevas imágenes seleccionadas -->
+      <div *ngIf="editImagePreviews().length > 0" class="edit-preview-section">
+        <p class="edit-section-label">Nuevas imágenes (reemplazarán las actuales)</p>
+        <div class="post-images-grid edit-preview-grid">
+          <div
+            *ngFor="let preview of editImagePreviews(); let i = index"
+            class="post-image-item edit-preview-item">
+            <img [src]="preview" class="post-image" alt="Vista previa" />
+            <button
+              mat-icon-button
+              type="button"
+              class="edit-remove-preview-btn"
+              (click)="removeEditImage(i)"
+              matTooltip="Quitar imagen">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Adjuntar nuevas imágenes (máx 5) -->
+      <div class="edit-image-upload-row">
+        <label class="edit-image-upload-label" aria-label="Seleccionar imágenes">
+          <mat-icon>add_photo_alternate</mat-icon>
+          <span>{{ editSelectedFiles().length > 0 ? 'Cambiar selección' : 'Adjuntar imágenes' }}</span>
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+            multiple
+            class="file-input-hidden"
+            (change)="onEditImagesSelected($event)"
+            aria-label="Seleccionar nuevas imágenes">
+        </label>
+        <span class="edit-image-hint">Máx. 5 imágenes · 5 MB c/u</span>
+      </div>
+
+      <!-- Acciones del formulario -->
+      <div class="edit-actions">
+        <button mat-button type="button" (click)="cancelEdit()" [disabled]="updatingPost()">
+          Cancelar
+        </button>
+        <button
+          mat-raised-button
+          color="primary"
+          type="submit"
+          [disabled]="updatingPost() || editForm.invalid">
+          <mat-spinner *ngIf="updatingPost()" diameter="18" class="inline-spinner"></mat-spinner>
+          <span *ngIf="!updatingPost()">Guardar cambios</span>
+        </button>
+      </div>
+
+    </form>
+
   </mat-card-content>
 
-  <mat-divider></mat-divider>
+  <mat-divider *ngIf="interactive"></mat-divider>
 
-  <!-- Action bar -->
-  <mat-card-actions class="action-bar">
+  <!-- Action bar — only in interactive mode -->
+  <mat-card-actions *ngIf="interactive" class="action-bar">
 
     <!-- Reaction button (MatMenu picker) -->
     <div class="reaction-group" role="group" aria-label="Reaccionar a la publicacion">

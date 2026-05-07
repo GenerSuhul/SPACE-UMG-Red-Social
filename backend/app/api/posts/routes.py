@@ -31,42 +31,46 @@ def _status_for_errors(errors: list[dict], default: int = 400) -> int:
 def _parse_payload_with_optional_image() -> tuple[dict | None, dict | None]:
     """
     Lee el body de la request soportando dos formatos:
-      - application/json puro
-      - multipart/form-data (campos de texto + archivo `image`)
+      - application/json puro  (images viene como lista de objetos {base64, mime})
+      - multipart/form-data    (múltiples archivos bajo el campo `images`)
 
     Devuelve (payload_dict, error_dict).
-    Si hay error procesando el archivo, payload es None y error trae el
-    diccionario en formato `{"ok": False, "errors": [...]}`.
     """
     content_type = (request.content_type or "").lower()
 
-    # --- multipart: combinamos campos de texto + archivo `image` ---
     if "multipart/form-data" in content_type:
         data: dict = {}
-        # form puede traer todos los campos como strings
+
         for key, value in request.form.items():
-            # `media_urls` puede venir repetido; preferimos getlist en ese caso
-            if key == "media_urls":
+            if key in ("media_urls", "images"):
+                continue
+            # remove_image viene como string "true"/"false" en multipart
+            if key == "remove_image":
+                data[key] = value.lower() in ("true", "1", "yes")
                 continue
             data[key] = value
+
         media_urls = request.form.getlist("media_urls")
         if media_urls:
             data["media_urls"] = media_urls
 
-        file = request.files.get("image")
-        if file is not None and getattr(file, "filename", ""):
-            try:
-                b64, mime = file_storage_to_base64(file)
-            except ImageError as ex:
-                return None, {
-                    "ok": False,
-                    "errors": [{"field": "image", "message": str(ex)}],
-                }
-            data["image_base64"] = b64
-            data["image_mime"]   = mime
+        # Múltiples archivos bajo el campo "images"
+        files = [f for f in request.files.getlist("images") if getattr(f, "filename", "")]
+        if files:
+            images = []
+            for f in files:
+                try:
+                    b64, mime = file_storage_to_base64(f)
+                except ImageError as ex:
+                    return None, {
+                        "ok": False,
+                        "errors": [{"field": "images", "message": str(ex)}],
+                    }
+                images.append({"base64": b64, "mime": mime})
+            data["images"] = images
+
         return data, None
 
-    # --- JSON puro (comportamiento previo intacto) ---
     return request.get_json(silent=True), None
 
 
@@ -126,6 +130,22 @@ def user_posts(user_id: str):
     page_size = int(request.args.get("page_size", 20) or 20)
 
     result = PostService.list_posts_by_user(user_id, page=page, page_size=page_size)
+    if not result["ok"]:
+        return js(result), _status_for_errors(result.get("errors", []))
+    return js(result), 200
+
+
+@posts_bp.route('/<post_id>', methods=['PATCH'])
+@jwt_required()
+@swag_from('docs/update_post.yml')
+def update_post(post_id: str):
+    """Actualiza parcialmente un post (solo el autor)."""
+    user_id = get_jwt_identity()
+    data, image_err = _parse_payload_with_optional_image()
+    if image_err:
+        return js(image_err), 400
+
+    result = PostService.update_post(post_id, user_id, data)
     if not result["ok"]:
         return js(result), _status_for_errors(result.get("errors", []))
     return js(result), 200

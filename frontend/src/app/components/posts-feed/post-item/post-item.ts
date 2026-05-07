@@ -56,7 +56,9 @@ export class PostItem {
   private readonly destroyRef = inject(DestroyRef);
 
   @Input({ required: true }) post!: Post;
+  @Input() interactive = false;
   @Output() postDeleted = new EventEmitter<string>();
+  @Output() postUpdated = new EventEmitter<Post>();
 
   // Expansion state (post-level comments panel)
   expanded = signal(false);
@@ -79,10 +81,18 @@ export class PostItem {
   selectedCommentImage = signal<File | null>(null);
   commentImagePreview = signal<string | null>(null);
 
+  // Edit state
+  editMode           = signal(false);
+  updatingPost       = signal(false);
+  editSelectedFiles  = signal<File[]>([]);
+  editImagePreviews  = signal<string[]>([]);
+  editClearImages    = signal(false);
+  editForm:            FormGroup;
+
   // Post reaction state
   reactingToPost = signal(false);
   myPostReaction = signal<ReactionType | null>(null);
-  deletingPost = signal(false);
+  deletingPost   = signal(false);
 
   // Per-comment/reply reaction state keyed by comment.id
   private readonly commentReactionMap = new Map<string, {
@@ -103,6 +113,9 @@ export class PostItem {
     this.currentUserId = this.tokenService.getCurrentUserId();
     this.commentForm = this.fb.group({
       content: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(2000)]],
+    });
+    this.editForm = this.fb.group({
+      content: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(5000)]],
     });
   }
 
@@ -434,6 +447,82 @@ export class PostItem {
           },
         });
     }
+  }
+
+  // ---- Edit post ----
+
+  startEdit(): void {
+    this.editForm.patchValue({ content: this.post.content });
+    this.editSelectedFiles.set([]);
+    this.editImagePreviews.set([]);
+    this.editClearImages.set(false);
+    this.editMode.set(true);
+  }
+
+  cancelEdit(): void {
+    this.editMode.set(false);
+    this.editSelectedFiles.set([]);
+    this.editImagePreviews.set([]);
+    this.editClearImages.set(false);
+  }
+
+  onEditImagesSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []).slice(0, 5);
+    this.editSelectedFiles.set(files);
+    this.editClearImages.set(false);
+    this.editImagePreviews.set([]);
+
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.editImagePreviews.update(prev => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+    input.value = '';
+  }
+
+  removeEditImage(index: number): void {
+    this.editSelectedFiles.update(files => files.filter((_, i) => i !== index));
+    this.editImagePreviews.update(prev => prev.filter((_, i) => i !== index));
+  }
+
+  clearAllEditImages(): void {
+    this.editClearImages.set(true);
+    this.editSelectedFiles.set([]);
+    this.editImagePreviews.set([]);
+  }
+
+  submitEdit(): void {
+    if (this.editForm.invalid) {
+      this.editForm.markAllAsTouched();
+      return;
+    }
+
+    this.updatingPost.set(true);
+    const content: string = this.editForm.get('content')!.value;
+    const files = this.editSelectedFiles().length ? this.editSelectedFiles() : undefined;
+    const clearImages = this.editClearImages();
+
+    this.postsService.updatePost(this.post.id, content, files, clearImages)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.post = res.post;
+          this.updatingPost.set(false);
+          this.editMode.set(false);
+          this.editSelectedFiles.set([]);
+          this.editImagePreviews.set([]);
+          this.editClearImages.set(false);
+          this.postUpdated.emit(res.post);
+          this.snackBar.open('Publicación actualizada.', 'Cerrar', { duration: 3000 });
+        },
+        error: () => {
+          this.updatingPost.set(false);
+          this.snackBar.open('Error al actualizar la publicación.', 'Cerrar', { duration: 4000 });
+        },
+      });
   }
 
   // ---- Delete post ----

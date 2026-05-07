@@ -61,8 +61,9 @@
 .image-upload-area {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
 }
 
 .image-upload-label {
@@ -86,25 +87,58 @@
   display: none;
 }
 
-.selected-filename {
-  font-size: 13px;
-  color: #555;
+.image-hint {
+  font-size: 12px;
+  color: #9e9e9e;
+}
+
+/* New post image previews grid */
+.new-post-images-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  border-radius: 10px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 180px;
+  margin-bottom: 8px;
 }
 
-.image-preview-wrapper {
-  margin-bottom: 12px;
+.new-post-image-item {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  background: #000;
 }
 
-.image-preview {
-  max-width: 100%;
-  max-height: 260px;
-  border-radius: 8px;
-  object-fit: contain;
+/* Single or last-odd → full width */
+.new-post-images-grid > .new-post-image-item:only-child,
+.new-post-images-grid > .new-post-image-item:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+  aspect-ratio: 16 / 9;
+}
+
+.new-post-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   display: block;
+}
+
+.remove-preview-btn {
+  position: absolute !important;
+  top: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.55) !important;
+  color: white !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  line-height: 28px !important;
+}
+
+.remove-preview-btn mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
 }
 
 .form-actions {

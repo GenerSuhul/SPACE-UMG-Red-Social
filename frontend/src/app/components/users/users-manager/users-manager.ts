@@ -17,6 +17,7 @@ import { UsersService } from '../../../service/users/users';
 import { PostsService } from '../../../service/posts/posts';
 import { UserInterface } from '../../../models/users';
 import { Post } from '../../../models/posts';
+
 import { NotificationDialog } from '../../shared/notification-dialog/notification-dialog';
 import { NotificationDialogData } from '../../shared/notification-dialog/notification-dialog.model';
 
@@ -45,10 +46,10 @@ export class UsersManager implements OnInit {
   posts        = signal<Post[]>([]);
   postsLoading = signal(false);
 
-  showNewPostForm  = signal(false);
-  creatingPost     = signal(false);
-  selectedPostImage = signal<File | null>(null);
-  postImagePreview  = signal<string | null>(null);
+  showNewPostForm    = signal(false);
+  creatingPost       = signal(false);
+  selectedPostFiles  = signal<File[]>([]);
+  postImagePreviews  = signal<string[]>([]);
 
   updateForm:  FormGroup;
   newPostForm: FormGroup;
@@ -123,6 +124,10 @@ export class UsersManager implements OnInit {
     this.posts.update(list => list.filter(p => p.id !== postId));
   }
 
+  onPostUpdated(updated: Post): void {
+    this.posts.update(list => list.map(p => p.id === updated.id ? updated : p));
+  }
+
   trackByPostId(_index: number, post: Post): string {
     return post.id;
   }
@@ -131,30 +136,35 @@ export class UsersManager implements OnInit {
     this.showNewPostForm.set(!this.showNewPostForm());
     if (!this.showNewPostForm()) {
       this.newPostForm.reset();
-      this.clearPostImage();
+      this.clearPostImages();
     }
   }
 
-  onPostImageSelected(event: Event): void {
+  onPostImagesSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
-    this.selectedPostImage.set(file);
-    if (file) {
+    const files = Array.from(input.files ?? []).slice(0, 5);
+    this.selectedPostFiles.set(files);
+    this.postImagePreviews.set([]);
+
+    files.forEach(file => {
       const reader = new FileReader();
       reader.onload = () => {
-        this.postImagePreview.set(reader.result as string);
+        this.postImagePreviews.update(prev => [...prev, reader.result as string]);
         this.cdr.markForCheck();
       };
       reader.readAsDataURL(file);
-    } else {
-      this.postImagePreview.set(null);
-    }
+    });
     input.value = '';
   }
 
-  clearPostImage(): void {
-    this.selectedPostImage.set(null);
-    this.postImagePreview.set(null);
+  removePostImage(index: number): void {
+    this.selectedPostFiles.update(files => files.filter((_, i) => i !== index));
+    this.postImagePreviews.update(prev => prev.filter((_, i) => i !== index));
+  }
+
+  clearPostImages(): void {
+    this.selectedPostFiles.set([]);
+    this.postImagePreviews.set([]);
   }
 
   submitNewPost(): void {
@@ -165,14 +175,14 @@ export class UsersManager implements OnInit {
 
     this.creatingPost.set(true);
     const content: string = this.newPostForm.get('content')!.value;
-    const image = this.selectedPostImage() ?? undefined;
+    const files = this.selectedPostFiles();
 
-    this.postsService.createPost(content, image).subscribe({
+    this.postsService.createPost(content, files).subscribe({
       next: (res) => {
         this.creatingPost.set(false);
         this.showNewPostForm.set(false);
         this.newPostForm.reset();
-        this.clearPostImage();
+        this.clearPostImages();
         this.posts.update(current => [res.post, ...current]);
         this.cdr.markForCheck();
         this.snackBar.open('Publicación creada.', 'Cerrar', { duration: 3000 });

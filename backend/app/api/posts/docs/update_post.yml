@@ -1,15 +1,18 @@
 tags:
   - Posts
-summary: Crea una nueva publicación (con 0–5 imágenes)
+summary: Actualiza una publicación (solo el autor)
 description: >
-  Crea una publicación cuyo autor es el usuario autenticado (obtenido del JWT).
-  Soporta dos formatos de body:
+  Actualiza parcialmente un post existente. Solo el usuario que lo creó puede
+  modificarlo. Se actualizan únicamente los campos que se envíen.
 
-    - application/json: el campo `images` es una lista de objetos
-      `{"base64": "...", "mime": "image/png"}`. Máximo 5 imágenes.
-    - multipart/form-data: múltiples archivos bajo el campo `images` (max 5 MB c/u).
+  Reglas de imágenes:
+    - `images: [...]`  → reemplaza la lista completa de imágenes (máx 5).
+    - `images: []`     → elimina todas las imágenes del post.
+    - No enviar        → las imágenes existentes no se modifican.
 
-  Las imágenes se almacenan como Base64 embebido en el documento del post.
+  Para multipart: cualquier archivo subido en `images` reemplaza la lista completa.
+
+  Soporta application/json y multipart/form-data.
 security:
   - Bearer: []
 consumes:
@@ -18,35 +21,38 @@ consumes:
 produces:
   - application/json
 parameters:
+  - in: path
+    name: post_id
+    type: string
+    required: true
+    description: ID del post a actualizar
   - in: body
     name: body
     required: false
     schema:
       type: object
-      required:
-        - content
       additionalProperties: false
       properties:
         content:
           type: string
           minLength: 1
           maxLength: 5000
-          example: "Mi primer post en la red social"
+          example: "Texto actualizado"
         media_urls:
           type: array
           items:
             type: string
-          example: ["https://example.com/img1.png"]
+          description: Reemplaza la lista completa. Enviar [] para vaciarla.
         images:
           type: array
           maxItems: 5
+          description: Reemplaza la lista completa de imágenes. Enviar [] para eliminarlas todas.
           items:
             type: object
             required: [base64, mime]
             properties:
               base64:
                 type: string
-                description: Imagen en Base64 (puede incluir prefijo data URL)
               mime:
                 type: string
                 enum: ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"]
@@ -54,18 +60,16 @@ parameters:
     name: content
     type: string
     required: false
-    description: Texto del post (obligatorio si no se usa JSON)
   - in: formData
     name: images
     type: file
     required: false
     description: >
-      Archivos de imagen (max 5 MB c/u, máx 5 archivos).
-      Repetir el campo para subir varias imágenes:
-      fd.append('images', file1); fd.append('images', file2)
+      Nuevas imágenes (max 5 MB c/u, máx 5 archivos). Reemplazan la lista actual.
+      Repetir el campo para subir varias: fd.append('images', file1)
 responses:
-  201:
-    description: Post creado correctamente
+  200:
+    description: Post actualizado correctamente
     schema:
       type: object
       properties:
@@ -75,9 +79,8 @@ responses:
         post:
           type: object
           properties:
-            id:          {type: string}
-            author_id:   {type: string}
-            content:     {type: string}
+            id:         {type: string}
+            content:    {type: string}
             images:
               type: array
               items:
@@ -85,7 +88,12 @@ responses:
                 properties:
                   base64: {type: string}
                   mime:   {type: string}
+            updated_at: {type: string}
   400:
-    description: Error de validación
+    description: Validación fallida o sin campos para actualizar
   401:
     description: Token JWT ausente o inválido
+  403:
+    description: El usuario autenticado no es el autor del post
+  404:
+    description: Post no encontrado

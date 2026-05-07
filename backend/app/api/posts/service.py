@@ -7,6 +7,7 @@ from .repository import PostRepository, CommentRepository, ReactionRepository
 from backend.app.api.users.repository import UserRepository
 from .schemas import (
     PostCreateSchema,
+    PostUpdateSchema,
     CommentCreateSchema,
     ReactionCreateSchema,
     empty_reactions_count,
@@ -48,6 +49,21 @@ def _author_fields(profiles: dict, author_id: str) -> dict:
     }
 
 
+def _post_images(post: dict) -> list[dict]:
+    """
+    Devuelve la lista de imágenes del post normalizada.
+    Mantiene compatibilidad con documentos que aún usan el formato antiguo
+    (image_base64 / image_mime).
+    """
+    images = post.get("images")
+    if isinstance(images, list):
+        return images
+    # Migración desde el formato anterior de campo único
+    old_b64  = post.get("image_base64")
+    old_mime = post.get("image_mime")
+    return [{"base64": old_b64, "mime": old_mime}] if old_b64 else []
+
+
 def _serialize_post(post: dict, profiles: dict | None = None) -> dict:
     author_id = str(post["author_id"])
     author = _author_fields(profiles or {}, author_id)
@@ -59,8 +75,7 @@ def _serialize_post(post: dict, profiles: dict | None = None) -> dict:
         "author_avatar_mime":   author["author_avatar_mime"],
         "content":              post.get("content", ""),
         "media_urls":           post.get("media_urls", []),
-        "image_base64":         post.get("image_base64"),
-        "image_mime":           post.get("image_mime"),
+        "images":               _post_images(post),
         "created_at":           _iso(post.get("created_at")),
         "updated_at":           _iso(post.get("updated_at")),
         "reactions_count":      post.get("reactions_count", empty_reactions_count()),
@@ -93,11 +108,7 @@ def _serialize_comment(comment: dict, profiles: dict | None = None) -> dict:
 def _resolve_image_fields(
     image_b64: str | None, image_mime: str | None
 ) -> tuple[str | None, str | None, list[dict] | None]:
-    """
-    Si la petición incluye imagen, valida y normaliza los campos.
-    Devuelve (b64_normalizado, mime_normalizado, errores_o_None).
-    Si no hay imagen, devuelve (None, None, None).
-    """
+    """Valida y normaliza un campo de imagen único (comentarios)."""
     if not image_b64:
         return None, None, None
     try:
@@ -105,6 +116,23 @@ def _resolve_image_fields(
     except ImageError as ex:
         return None, None, [{"field": "image", "message": str(ex)}]
     return clean_b64, clean_mime, None
+
+
+def _validate_images(raw_images: list) -> tuple[list[dict], list[dict] | None]:
+    """
+    Valida y normaliza una lista de imágenes para posts.
+    Devuelve (images_limpias, errores_o_None).
+    """
+    validated: list[dict] = []
+    for i, img in enumerate(raw_images):
+        b64  = img.base64 if hasattr(img, "base64") else img.get("base64", "")
+        mime = img.mime   if hasattr(img, "mime")   else img.get("mime", "")
+        try:
+            clean_b64, clean_mime = normalize_base64_image(b64, mime)
+        except ImageError as ex:
+            return [], [{"field": f"images[{i}]", "message": str(ex)}]
+        validated.append({"base64": clean_b64, "mime": clean_mime})
+    return validated, None
 
 
 def _serialize_reaction(reaction: dict) -> dict:
@@ -151,10 +179,7 @@ class PostService:
         except ValidationError as e:
             return {"ok": False, "errors": _validation_errors(e)}
 
-        # Procesa la imagen (opcional) — valida tamaño/mime/decodificación.
-        image_b64, image_mime, image_errs = _resolve_image_fields(
-            validated.image_base64, validated.image_mime
-        )
+        images, image_errs = _validate_images(validated.images)
         if image_errs:
             return {"ok": False, "errors": image_errs}
 
@@ -162,8 +187,7 @@ class PostService:
             "author_id":       ObjectId(author_id),
             "content":         validated.content,
             "media_urls":      validated.media_urls,
-            "image_base64":    image_b64,
-            "image_mime":      image_mime,
+            "images":          images,
             "reactions_count": empty_reactions_count(),
             "comments_count":  0,
             "created_at":      datetime.now(timezone.utc),
@@ -216,6 +240,52 @@ class PostService:
             "post":     _serialize_post(post, profiles),
             "comments": [_serialize_comment(c, profiles) for c in comments],
         }
+
+    @staticmethod
+    def update_post(post_id: str, requester_id: str, data: dict | None) -> dict:
+        if not _is_valid_object_id(post_id):
+            return {"ok": False, "errors": [{"field": "post_id", "message": "Id de post inválido"}]}
+        if not isinstance(data, dict):
+            return {"ok": False, "errors": [{"field": "body", "message": "Body JSON requerido"}]}
+
+        try:
+            validated = PostUpdateSchema(**data)
+        except ValidationError as e:
+            return {"ok": False, "errors": _validation_errors(e)}
+
+        post = PostRepository.find_by_id(post_id)
+        if not post:
+            return {"ok": False, "errors": [{"field": "post", "message": "Post no encontrado"}]}
+
+        if str(post.get("author_id")) != str(requester_id):
+            return {"ok": False, "errors": [{"field": "auth", "message": "No autorizado para modificar este post"}]}
+
+        update_fields: dict = {}
+
+        if validated.content is not None:
+            update_fields["content"] = validated.content
+
+        if validated.media_urls is not None:
+            update_fields["media_urls"] = validated.media_urls
+
+        # images: None → no tocar; [] → vaciar; [...] → reemplazar
+        if validated.images is not None:
+            images, image_errs = _validate_images(validated.images)
+            if image_errs:
+                return {"ok": False, "errors": image_errs}
+            update_fields["images"] = images
+
+        if not update_fields:
+            return {"ok": False, "errors": [{"field": "body", "message": "No se enviaron campos para actualizar"}]}
+
+        update_fields["updated_at"] = datetime.now(timezone.utc)
+
+        updated = PostRepository.update_by_id(post_id, update_fields)
+        if not updated:
+            return {"ok": False, "errors": [{"field": "database", "message": "Error actualizando el post"}]}
+
+        profiles = UserRepository.find_many_usernames([str(updated["author_id"])])
+        return {"ok": True, "post": _serialize_post(updated, profiles)}
 
     @staticmethod
     def list_posts_by_user(user_id: str, page: int = 1, page_size: int = 20) -> dict:

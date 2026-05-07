@@ -12,6 +12,29 @@ TargetType   = Literal["post", "comment"]
 # ---------------------------------------------------------------------------
 from backend.app.image_utils import ALLOWED_IMAGE_MIMES, MAX_IMAGE_BYTES  # noqa: E402
 
+MAX_IMAGES_PER_POST: int = 5
+
+
+# ---------------------------------------------------------------------------
+# Imagen individual embebida
+# ---------------------------------------------------------------------------
+class PostImageSchema(BaseModel):
+    """Una imagen embebida como Base64 dentro de un post."""
+    model_config = ConfigDict(extra="forbid")
+
+    base64: str  = Field(..., min_length=1)
+    mime:   str
+
+    @field_validator("mime")
+    @classmethod
+    def validate_mime(cls, value: str) -> str:
+        cleaned = value.strip().lower()
+        if cleaned not in ALLOWED_IMAGE_MIMES:
+            raise ValueError(
+                f"Tipo de imagen no permitido. Permitidos: {sorted(ALLOWED_IMAGE_MIMES)}"
+            )
+        return cleaned
+
 
 # ---------------------------------------------------------------------------
 # POSTS
@@ -21,17 +44,15 @@ class PostCreateSchema(BaseModel):
     Schema para crear una publicación.
     El `author_id` no se envía: se extrae del JWT en la capa de service.
 
-    `image_base64` e `image_mime` son opcionales y permiten adjuntar UNA
-    imagen directamente embebida en la petición JSON. Cuando la petición es
-    multipart/form-data con `image` como archivo, la conversión a Base64 la
-    hace la capa de routes/service antes de llegar a este schema.
+    `images` es una lista de hasta MAX_IMAGES_PER_POST imágenes Base64.
+    Cuando la petición es multipart/form-data, la conversión de los archivos
+    a Base64 la hace la capa de routes antes de llegar a este schema.
     """
     model_config = ConfigDict(extra="forbid")
 
-    content:      str         = Field(..., min_length=1, max_length=5000)
-    media_urls:   list[str]   = Field(default_factory=list)
-    image_base64: str | None  = None
-    image_mime:   str | None  = None
+    content:    str                    = Field(..., min_length=1, max_length=5000)
+    media_urls: list[str]              = Field(default_factory=list)
+    images:     list[PostImageSchema]  = Field(default_factory=list)
 
     @field_validator("content")
     @classmethod
@@ -53,31 +74,75 @@ class PostCreateSchema(BaseModel):
                 raise ValueError("Las URLs de media deben ser strings no vacíos")
         return [u.strip() for u in value]
 
-    @field_validator("image_mime")
+    @field_validator("images")
     @classmethod
-    def validate_image_mime(cls, value: str | None) -> str | None:
+    def validate_images(cls, value: list[PostImageSchema]) -> list[PostImageSchema]:
+        if value is None:
+            return []
+        if len(value) > MAX_IMAGES_PER_POST:
+            raise ValueError(f"Máximo {MAX_IMAGES_PER_POST} imágenes por publicación")
+        return value
+
+
+class PostUpdateSchema(BaseModel):
+    """
+    Schema para actualizar una publicación existente (PATCH parcial).
+    Todos los campos son opcionales — solo se actualizan los que se envíen.
+
+    Reglas de imágenes:
+    - `images: [...]`  → reemplaza la lista completa de imágenes del post.
+    - `images: []`     → elimina todas las imágenes del post.
+    - No enviar        → las imágenes existentes no se tocan.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    content:    str | None                   = Field(None, min_length=1, max_length=5000)
+    media_urls: list[str] | None             = None
+    images:     list[PostImageSchema] | None = None
+
+    @field_validator("content")
+    @classmethod
+    def validate_content(cls, value: str | None) -> str | None:
         if value is None:
             return None
-        cleaned = value.strip().lower()
-        if cleaned not in ALLOWED_IMAGE_MIMES:
-            raise ValueError(
-                f"Tipo de imagen no permitido. Permitidos: {sorted(ALLOWED_IMAGE_MIMES)}"
-            )
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("El contenido no puede estar vacío")
         return cleaned
+
+    @field_validator("media_urls")
+    @classmethod
+    def validate_media_urls(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        if len(value) > 10:
+            raise ValueError("Máximo 10 URLs de media por post")
+        for url in value:
+            if not isinstance(url, str) or not url.strip():
+                raise ValueError("Las URLs de media deben ser strings no vacíos")
+        return [u.strip() for u in value]
+
+    @field_validator("images")
+    @classmethod
+    def validate_images(cls, value: list[PostImageSchema] | None) -> list[PostImageSchema] | None:
+        if value is None:
+            return None
+        if len(value) > MAX_IMAGES_PER_POST:
+            raise ValueError(f"Máximo {MAX_IMAGES_PER_POST} imágenes por publicación")
+        return value
 
 
 class PostResponseSchema(BaseModel):
     """Schema canónico para serializar un post en respuestas."""
-    id:               str
-    author_id:        str
-    content:          str
-    media_urls:       list[str]
-    image_base64:     str | None = None
-    image_mime:       str | None = None
-    created_at:       str
-    updated_at:       str | None = None
-    reactions_count:  dict[str, int]
-    comments_count:   int
+    id:              str
+    author_id:       str
+    content:         str
+    media_urls:      list[str]
+    images:          list[dict]
+    created_at:      str
+    updated_at:      str | None = None
+    reactions_count: dict[str, int]
+    comments_count:  int
 
 
 # ---------------------------------------------------------------------------

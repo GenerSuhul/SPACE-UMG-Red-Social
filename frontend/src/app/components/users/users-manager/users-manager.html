@@ -49,36 +49,35 @@
             </mat-form-field>
 
             <div class="image-upload-area">
-              <label class="image-upload-label" aria-label="Adjuntar imagen a la publicación">
-                <mat-icon>image</mat-icon>
-                <span>{{ selectedPostImage() ? 'Cambiar imagen' : 'Adjuntar imagen' }}</span>
+              <label class="image-upload-label" aria-label="Adjuntar imágenes a la publicación">
+                <mat-icon>add_photo_alternate</mat-icon>
+                <span>{{ selectedPostFiles().length > 0 ? 'Cambiar selección' : 'Adjuntar imágenes' }}</span>
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                  multiple
                   class="file-input-hidden"
-                  (change)="onPostImageSelected($event)"
-                  aria-label="Seleccionar imagen">
+                  (change)="onPostImagesSelected($event)"
+                  aria-label="Seleccionar imágenes">
               </label>
-              <button
-                *ngIf="selectedPostImage()"
-                mat-icon-button
-                type="button"
-                class="clear-image-btn"
-                (click)="clearPostImage()"
-                aria-label="Quitar imagen"
-                matTooltip="Quitar imagen">
-                <mat-icon>close</mat-icon>
-              </button>
-              <span *ngIf="selectedPostImage()" class="selected-filename">
-                {{ selectedPostImage()!.name }}
-              </span>
+              <span class="image-hint">Máx. 5 imágenes · 5 MB c/u</span>
             </div>
 
-            <div *ngIf="postImagePreview()" class="image-preview-wrapper">
-              <img
-                [src]="postImagePreview()"
-                class="image-preview"
-                alt="Vista previa de la imagen a publicar" />
+            <!-- Previews de imágenes seleccionadas -->
+            <div *ngIf="postImagePreviews().length > 0" class="new-post-images-grid">
+              <div
+                *ngFor="let preview of postImagePreviews(); let i = index"
+                class="new-post-image-item">
+                <img [src]="preview" class="new-post-image" alt="Vista previa" />
+                <button
+                  mat-icon-button
+                  type="button"
+                  class="remove-preview-btn"
+                  (click)="removePostImage(i)"
+                  matTooltip="Quitar imagen">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
             </div>
 
             <div class="form-actions">
@@ -107,7 +106,9 @@
       <app-post-item
         *ngFor="let post of posts(); trackBy: trackByPostId"
         [post]="post"
-        (postDeleted)="onPostDeleted($event)">
+        [interactive]="true"
+        (postDeleted)="onPostDeleted($event)"
+        (postUpdated)="onPostUpdated($event)">
       </app-post-item>
     </div>
 

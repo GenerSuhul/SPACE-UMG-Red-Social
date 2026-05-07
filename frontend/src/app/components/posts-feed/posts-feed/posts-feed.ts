@@ -30,8 +30,8 @@ export class PostsFeed implements OnInit {
   creatingPost = signal(false);
   showNewPostForm = signal(false);
 
-  selectedPostImage = signal<File | null>(null);
-  postImagePreview = signal<string | null>(null);
+  selectedFiles = signal<File[]>([]);
+  postImagePreviews = signal<string[]>([]);
 
   newPostForm: FormGroup;
 
@@ -89,28 +89,34 @@ export class PostsFeed implements OnInit {
     this.showNewPostForm.set(!this.showNewPostForm());
     if (!this.showNewPostForm()) {
       this.newPostForm.reset();
-      this.clearPostImage();
+      this.clearPostImages();
     }
   }
 
   onPostImageSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
-    this.selectedPostImage.set(file);
-    if (file) {
+    const files = Array.from(input.files ?? []).slice(0, 5);
+    this.selectedFiles.set(files);
+    this.postImagePreviews.set([]);
+
+    files.forEach(file => {
       const reader = new FileReader();
-      reader.onload = () => this.postImagePreview.set(reader.result as string);
+      reader.onload = () => {
+        this.postImagePreviews.update(prev => [...prev, reader.result as string]);
+      };
       reader.readAsDataURL(file);
-    } else {
-      this.postImagePreview.set(null);
-    }
-    // Reset input value so the same file can be re-selected after clearing.
+    });
     input.value = '';
   }
 
-  clearPostImage(): void {
-    this.selectedPostImage.set(null);
-    this.postImagePreview.set(null);
+  removePostImage(index: number): void {
+    this.selectedFiles.update(files => files.filter((_, i) => i !== index));
+    this.postImagePreviews.update(prev => prev.filter((_, i) => i !== index));
+  }
+
+  clearPostImages(): void {
+    this.selectedFiles.set([]);
+    this.postImagePreviews.set([]);
   }
 
   submitNewPost(): void {
@@ -121,16 +127,16 @@ export class PostsFeed implements OnInit {
 
     this.creatingPost.set(true);
     const content: string = this.newPostForm.get('content')!.value;
-    const image = this.selectedPostImage() ?? undefined;
+    const files = this.selectedFiles().length ? this.selectedFiles() : undefined;
 
-    this.postsService.createPost(content, image)
+    this.postsService.createPost(content, files)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
           this.creatingPost.set(false);
           this.showNewPostForm.set(false);
           this.newPostForm.reset();
-          this.clearPostImage();
+          this.clearPostImages();
           // Prepend new post at the top
           this.posts.update(current => [res.post, ...current]);
           this.snackBar.open('Publicacion creada.', 'Cerrar', { duration: 3000 });
