@@ -15,9 +15,6 @@ from .schemas import (
 from .image_utils import normalize_base64_image, ImageError
 
 
-# ---------------------------------------------------------------------------
-# Utilidades de serialización
-# ---------------------------------------------------------------------------
 _TZ_LOCAL = timezone(timedelta(hours=-6))
 
 
@@ -32,7 +29,6 @@ def _iso(dt: datetime | None) -> str | None:
 
 
 def _fetch_usernames(docs: list[dict], id_field: str = "author_id") -> dict:
-    """Devuelve {str(author_id): {username, avatar_base64, avatar_mime}}."""
     ids = list({str(d[id_field]) for d in docs if d.get(id_field)})
     if not ids:
         return {}
@@ -40,7 +36,6 @@ def _fetch_usernames(docs: list[dict], id_field: str = "author_id") -> dict:
 
 
 def _author_fields(profiles: dict, author_id: str) -> dict:
-    """Extrae los campos de autor desde el dict de perfiles."""
     profile = profiles.get(str(author_id)) or {}
     return {
         "author_username":      profile.get("username"),
@@ -50,15 +45,9 @@ def _author_fields(profiles: dict, author_id: str) -> dict:
 
 
 def _post_images(post: dict) -> list[dict]:
-    """
-    Devuelve la lista de imágenes del post normalizada.
-    Mantiene compatibilidad con documentos que aún usan el formato antiguo
-    (image_base64 / image_mime).
-    """
     images = post.get("images")
     if isinstance(images, list):
         return images
-    # Migración desde el formato anterior de campo único
     old_b64  = post.get("image_base64")
     old_mime = post.get("image_mime")
     return [{"base64": old_b64, "mime": old_mime}] if old_b64 else []
@@ -108,7 +97,6 @@ def _serialize_comment(comment: dict, profiles: dict | None = None) -> dict:
 def _resolve_image_fields(
     image_b64: str | None, image_mime: str | None
 ) -> tuple[str | None, str | None, list[dict] | None]:
-    """Valida y normaliza un campo de imagen único (comentarios)."""
     if not image_b64:
         return None, None, None
     try:
@@ -119,10 +107,6 @@ def _resolve_image_fields(
 
 
 def _validate_images(raw_images: list) -> tuple[list[dict], list[dict] | None]:
-    """
-    Valida y normaliza una lista de imágenes para posts.
-    Devuelve (images_limpias, errores_o_None).
-    """
     validated: list[dict] = []
     for i, img in enumerate(raw_images):
         b64  = img.base64 if hasattr(img, "base64") else img.get("base64", "")
@@ -161,9 +145,6 @@ def _is_valid_object_id(value: str) -> bool:
         return False
 
 
-# ===========================================================================
-# POSTS
-# ===========================================================================
 class PostService:
 
     @staticmethod
@@ -324,7 +305,6 @@ class PostService:
         if not post:
             return {"ok": False, "errors": [{"field": "post", "message": "Post no encontrado"}]}
 
-        # Solo el autor puede eliminar
         if str(post.get("author_id")) != str(requester_id):
             return {"ok": False, "errors": [{"field": "auth", "message": "No autorizado para eliminar este post"}]}
 
@@ -332,7 +312,6 @@ class PostService:
         if not deleted:
             return {"ok": False, "errors": [{"field": "database", "message": "Error eliminando el post"}]}
 
-        # Cascada: comentarios + reacciones (de post y de comentarios)
         comments = CommentRepository.list_by_post(post_id, skip=0, limit=10_000)
         for c in comments:
             ReactionRepository.delete_by_target(str(c["_id"]), "comment")
@@ -342,9 +321,6 @@ class PostService:
         return {"ok": True, "message": "Post eliminado correctamente"}
 
 
-# ===========================================================================
-# COMMENTS
-# ===========================================================================
 class CommentService:
 
     @staticmethod
@@ -361,12 +337,10 @@ class CommentService:
         except ValidationError as e:
             return {"ok": False, "errors": _validation_errors(e)}
 
-        # El post objetivo debe existir
         post = PostRepository.find_by_id(post_id)
         if not post:
             return {"ok": False, "errors": [{"field": "post", "message": "Post no encontrado"}]}
 
-        # Si es respuesta a otro comentario, validar que exista y pertenezca al mismo post
         parent_oid = None
         if validated.parent_comment_id:
             if not _is_valid_object_id(validated.parent_comment_id):
@@ -378,7 +352,6 @@ class CommentService:
                 return {"ok": False, "errors": [{"field": "parent_comment_id", "message": "El comentario padre no pertenece al post"}]}
             parent_oid = ObjectId(validated.parent_comment_id)
 
-        # Imagen opcional para el comentario / sub-comentario.
         image_b64, image_mime, image_errs = _resolve_image_fields(
             validated.image_base64, validated.image_mime
         )
@@ -400,7 +373,6 @@ class CommentService:
         if not comment_id:
             return {"ok": False, "errors": [{"field": "database", "message": "Error guardando el comentario"}]}
 
-        # Mantener `comments_count` del post sincronizado
         PostRepository.increment_comments(post_id, 1)
 
         comment_doc["_id"] = ObjectId(comment_id)
@@ -456,11 +428,9 @@ class CommentService:
         if not comment:
             return {"ok": False, "errors": [{"field": "comment", "message": "Comentario no encontrado"}]}
 
-        # Coherencia: el comentario debe pertenecer al post indicado
         if str(comment.get("post_id")) != str(post_id):
             return {"ok": False, "errors": [{"field": "comment", "message": "El comentario no pertenece al post"}]}
 
-        # Permisos: autor del comentario o autor del post pueden borrarlo
         post = PostRepository.find_by_id(post_id)
         post_author = str(post.get("author_id")) if post else None
         comment_author = str(comment.get("author_id"))
@@ -471,7 +441,6 @@ class CommentService:
         if not deleted:
             return {"ok": False, "errors": [{"field": "database", "message": "Error eliminando el comentario"}]}
 
-        # Cascada: reacciones del comentario + sus respuestas y sus reacciones
         ReactionRepository.delete_by_target(comment_id, "comment")
         replies = CommentRepository.list_replies(comment_id, skip=0, limit=10_000)
         for r in replies:
@@ -482,17 +451,7 @@ class CommentService:
         return {"ok": True, "message": "Comentario eliminado correctamente"}
 
 
-# ===========================================================================
-# REACTIONS
-# ===========================================================================
 class ReactionService:
-    """
-    Reglas:
-      - Un usuario puede tener UNA reacción activa por target.
-      - Si reacciona con el mismo tipo que ya tiene → no-op (idempotente).
-      - Si reacciona con tipo distinto → se actualiza, ajustando contadores.
-      - DELETE → borra la reacción y decrementa el contador del tipo activo.
-    """
 
     @staticmethod
     def _validate_payload(data: dict | None) -> tuple[ReactionCreateSchema | None, list[dict] | None]:
@@ -566,7 +525,6 @@ class ReactionService:
             return {"ok": False, "errors": [{"field": "comment", "message": "El comentario no pertenece al post"}]}
         return ReactionService._remove_reaction(user_id, comment_id, "comment")
 
-    # -- helpers internos ---------------------------------------------------
     @staticmethod
     def _increment_target(target_id: str, target_type: str, reaction_type: str, delta: int) -> None:
         if target_type == "post":
@@ -578,7 +536,6 @@ class ReactionService:
     def _upsert_reaction(user_id: str, target_id: str, target_type: str, new_reaction: str) -> dict:
         existing = ReactionRepository.find_user_reaction(user_id, target_id, target_type)
 
-        # Caso 1: no había reacción → insertar y subir contador
         if not existing:
             reaction_doc = {
                 "user_id":       ObjectId(user_id),
@@ -593,11 +550,9 @@ class ReactionService:
             reaction_doc["_id"] = ObjectId(reaction_id)
             return {"ok": True, "reaction": _serialize_reaction(reaction_doc), "action": "created"}
 
-        # Caso 2: misma reacción → idempotente, no cambiamos contadores
         if existing["reaction_type"] == new_reaction:
             return {"ok": True, "reaction": _serialize_reaction(existing), "action": "unchanged"}
 
-        # Caso 3: tipo distinto → swap (decrementar el viejo, incrementar el nuevo)
         old_type = existing["reaction_type"]
         updated = ReactionRepository.update_reaction_type(existing["_id"], new_reaction)
         if not updated:

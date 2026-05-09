@@ -9,30 +9,24 @@ class AuthService:
 
     @staticmethod
     def register(data: dict) -> dict:
-        # 1. Validación — Pydantic lanza ValidationError si algo falla
         try:
             validated = UserRegisterSchema(**data)
         except ValidationError as e:
-            # Extraemos solo los mensajes limpios para la respuesta
             errors = [
                 {"field": err["loc"][0], "message": err["msg"]}
                 for err in e.errors()
             ]
             return {"ok": False, "errors": errors}
 
-        # 2. Verificar duplicados
         exist_user = AuthRepository.find_by_username(validated.username)
         if exist_user:
             return {"ok": False, "errors": [{"field": "username", "message": "Username in use"}]}
 
-        # 3. Encriptar contraseña con bcrypt
-        # El salt_rounds=12 es el balance recomendado entre seguridad y rendimiento
         hashed_password = bcrypt.hashpw(
             validated.password.encode("utf-8"),
             bcrypt.gensalt(rounds=12)
         )
 
-        # 4. Construir documento para MongoDB
         user_doc = {
             "username":   validated.username,
             "email":      validated.email.lower(),
@@ -51,7 +45,6 @@ class AuthService:
 
     @staticmethod
     def login(data: dict) -> dict:
-        # 1. Validación básica de entrada
         try:
             validated = UserLoginSchema(**data)
         except ValidationError as e:
@@ -61,13 +54,11 @@ class AuthService:
             ]
             return {"ok": False, "errors": errors}
 
-        # 2. Buscar usuario
         user = AuthRepository.find_by_username(validated.username)
         if not user:
-            # Mensaje genérico intencional — no revelar si el username existe
+            # Mensaje genérico: no revelar si el username existe
             return {"ok": False, "errors": [{"field": "credentials", "message": "Invalid Login"}]}
 
-        # 3. Verificar contraseña
         password_matches = bcrypt.checkpw(
             validated.password.encode("utf-8"),
             user["password"]
@@ -75,8 +66,6 @@ class AuthService:
         if not password_matches:
             return {"ok": False, "errors": [{"field": "credentials", "message": "Invalid Login"}]}
 
-        # 4. Generar JWT
-        # identity es lo que podrás leer luego con get_jwt_identity()
         access_token = create_access_token(identity=str(user["_id"]))
         return {
             "ok": True,

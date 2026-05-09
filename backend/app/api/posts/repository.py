@@ -5,7 +5,6 @@ from pymongo import ReturnDocument, DESCENDING
 
 
 class PostRepository:
-    """Acceso a la colección `posts`. Solo PyMongo, sin lógica de negocio."""
 
     @staticmethod
     def insert_post(post_doc: dict) -> str | None:
@@ -26,10 +25,6 @@ class PostRepository:
 
     @staticmethod
     def list_posts(skip: int = 0, limit: int = 20) -> list[dict]:
-        """
-        Devuelve posts ordenados por fecha de creación descendente.
-        Pensado para el feed; aplicar filtros adicionales en versiones futuras.
-        """
         try:
             cursor = (
                 mongo.db.posts
@@ -97,7 +92,6 @@ class PostRepository:
 
     @staticmethod
     def increment_reaction(post_id: str, reaction_type: str, delta: int) -> dict | None:
-        """Suma `delta` (puede ser negativo) al contador de un tipo de reacción."""
         try:
             return mongo.db.posts.find_one_and_update(
                 {"_id": ObjectId(post_id)},
@@ -122,7 +116,6 @@ class PostRepository:
 
 
 class CommentRepository:
-    """Acceso a la colección `comments`."""
 
     @staticmethod
     def insert_comment(comment_doc: dict) -> str | None:
@@ -143,7 +136,6 @@ class CommentRepository:
 
     @staticmethod
     def list_by_post(post_id: str, skip: int = 0, limit: int = 50) -> list[dict]:
-        """Solo comentarios raíz (sin parent_comment_id)."""
         try:
             cursor = (
                 mongo.db.comments
@@ -159,7 +151,6 @@ class CommentRepository:
 
     @staticmethod
     def list_replies(parent_comment_id: str, skip: int = 0, limit: int = 50) -> list[dict]:
-        """Respuestas directas a un comentario específico."""
         try:
             cursor = (
                 mongo.db.comments
@@ -175,7 +166,6 @@ class CommentRepository:
 
     @staticmethod
     def delete_replies_by_parent(parent_comment_id: str) -> int:
-        """Borra todas las respuestas de un comentario (cascada al eliminar el padre)."""
         try:
             result = mongo.db.comments.delete_many(
                 {"parent_comment_id": ObjectId(parent_comment_id)}
@@ -196,7 +186,6 @@ class CommentRepository:
 
     @staticmethod
     def delete_by_post(post_id: str) -> int:
-        """Borra todos los comentarios asociados a un post (útil al eliminar el post)."""
         try:
             result = mongo.db.comments.delete_many({"post_id": ObjectId(post_id)})
             return result.deleted_count
@@ -218,10 +207,6 @@ class CommentRepository:
 
 
 class ReactionRepository:
-    """
-    Acceso a la colección `reactions`.
-    Una reacción única por (user_id, target_id, target_type).
-    """
 
     @staticmethod
     def find_user_reaction(user_id: str, target_id: str, target_type: str) -> dict | None:
@@ -271,7 +256,6 @@ class ReactionRepository:
 
     @staticmethod
     def delete_by_target(target_id: str, target_type: str) -> int:
-        """Borra todas las reacciones asociadas a un target (cascada al borrar post/comment)."""
         try:
             result = mongo.db.reactions.delete_many({
                 "target_id":   ObjectId(target_id),

@@ -8,13 +8,6 @@ from backend.app.image_utils import file_storage_to_base64, ImageError
 
 
 def _parse_user_payload() -> tuple[dict | None, dict | None]:
-    """
-    Lee el body de la request soportando:
-      - application/json puro
-      - multipart/form-data (campos de texto + archivo `avatar`)
-
-    Devuelve (payload_dict, error_dict).
-    """
     content_type = (request.content_type or "").lower()
 
     if "multipart/form-data" in content_type:
@@ -42,9 +35,6 @@ def _parse_user_payload() -> tuple[dict | None, dict | None]:
 @jwt_required()
 @swag_from('docs/get_user.yml')
 def get_user():
-    """
-    Api para visualizar datos del usuario
-    """
     user_id = get_jwt_identity()
     result = UserService.find_by_id(user_id)
 
@@ -58,11 +48,6 @@ def get_user():
 @jwt_required()
 @swag_from('docs/update_me.yml')
 def update_me():
-    """
-    Api para actualizar parcialmente los datos del usuario autenticado.
-    Acepta application/json o multipart/form-data (para subir avatar).
-    El usuario se identifica a partir del JWT — no se acepta id en URL ni body.
-    """
     user_id = get_jwt_identity()
     data, image_err = _parse_user_payload()
     if image_err:
@@ -83,7 +68,6 @@ def update_me():
 @jwt_required()
 @swag_from('docs/search_users.yml')
 def search_users():
-    """Búsqueda de usuarios por username (parcial, case-insensitive)."""
     query = request.args.get("q", "").strip()
     try:
         limit = int(request.args.get("limit", 20))
@@ -100,7 +84,6 @@ def search_users():
 @jwt_required()
 @swag_from('docs/get_user_by_id.yml')
 def get_user_by_id(user_id: str):
-    """Devuelve el perfil público de cualquier usuario por su id."""
     current_user_id = get_jwt_identity()
     result = UserService.get_public_profile(user_id, current_user_id)
     if not result["ok"]:
@@ -115,7 +98,6 @@ def get_user_by_id(user_id: str):
 @jwt_required()
 @swag_from('docs/my_follows.yml')
 def my_follows():
-    """Devuelve las listas de seguidores y seguidos del usuario autenticado."""
     user_id = get_jwt_identity()
     result = UserService.get_my_follow_lists(user_id)
     if not result["ok"]:
@@ -127,10 +109,6 @@ def my_follows():
 @jwt_required()
 @swag_from('docs/toggle_follow.yml')
 def toggle_follow(target_user_id: str):
-    """
-    Toggle follow/unfollow del usuario autenticado sobre `target_user_id`.
-    Si ya lo sigue → unfollow; si no → follow.
-    """
     current_user_id = get_jwt_identity()
     result = UserService.toggle_follow(current_user_id, target_user_id)
 

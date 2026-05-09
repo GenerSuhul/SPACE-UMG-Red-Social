@@ -8,9 +8,6 @@ from .services import AuthService
 @auth_bp.route('/register', methods=['POST'])
 @swag_from('docs/register.yml')
 def register_user():
-    """
-    Ruta de registro de usuario
-    """
     data = request.get_json()
 
     result = AuthService.register(data)
@@ -23,9 +20,6 @@ def register_user():
 @auth_bp.route('/login', methods=['POST'])
 @swag_from('docs/login.yml')
 def login_user():
-    """
-    Ruta para login de usuarios
-    """
 
     data = request.get_json()
 
@@ -41,11 +35,6 @@ def login_user():
 @jwt_required()
 @swag_from('docs/logout.yml')
 def logout_user():
-    """
-    Ruta para cerrar sesión: revoca el token JWT actual añadiendo
-    su JTI a la blocklist. Tras esta llamada, el token deja de ser
-    válido para cualquier endpoint protegido.
-    """
     jti = get_jwt().get("jti")
     user_id = get_jwt_identity()
 
