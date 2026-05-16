@@ -3,14 +3,22 @@ import os
 from dataclasses import dataclass, field
 from datetime import timedelta
 
+
+def _build_mongo_uri() -> str:
+    uri_env = os.getenv("MONGO_URI")
+    if uri_env:
+        return uri_env
+
+    username = os.getenv("MONGO_DB_USERNAME", "default_user")
+    password = os.getenv("MONGO_DB_PASSWORD", "default_pass")
+    name     = os.getenv("MONGO_DB_NAME",     "default_db")
+    host     = os.getenv("MONGO_DB_HOST",     "localhost")
+    port     = os.getenv("MONGO_DB_PORT",     "27017")
+    return f"mongodb://{username}:{password}@{host}:{port}/{name}?authSource=admin"
+
 @dataclass
 class BaseConfig:
-    _username_db: str   = os.getenv("MONGO_DB_USERNAME", "default_user")
-    _password_db: str   = os.getenv("MONGO_DB_PASSWORD", "default_pass")
-    _name_db: str       = os.getenv("MONGO_DB_NAME", "default_db")
-    _host_db: str       = os.getenv("MONGO_DB_HOST", "localhost")
-    _port_db: str       = os.getenv("MONGO_DB_PORT", "27017")
-    MONGO_URI: str      = f"mongodb://{_username_db}:{_password_db}@{_host_db}:{_port_db}/{_name_db}?authSource=admin"
+    MONGO_URI: str      = field(default_factory=_build_mongo_uri)
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "change-me")
 
     # Token válido 24 h. El logout lo invalida antes de tiempo via blocklist
@@ -38,7 +46,8 @@ class DevelopmentConfig(BaseConfig):
 
 @dataclass
 class ProductionConfig(BaseConfig):
-    MONGO_URI: str      = os.getenv("MONGO_URI", None)
+    # MONGO_URI lo hereda de BaseConfig (vía _build_mongo_uri).
+    # En producción se asume que MONGO_URI viene del entorno (Atlas).
     CORS_ORIGINS: list  = field(default_factory=lambda: [
         origin.strip()
         for origin in os.getenv("CORS_WHITE_LIST", "").split(",")
@@ -51,8 +60,8 @@ class TestingConfig(BaseConfig):
     MONGO_URI: str      = "mongodb://localhost:27017/test_db"
     CORS_ORIGINS: list  = field(default_factory=lambda: ["http://localhost:4200"])
 
-config_by_name: dict[str, type] = {
-    "development": DevelopmentConfig,
-    "production":  ProductionConfig,
-    "testing":     TestingConfig,
+config_by_name: dict[str, object] = {
+    "development": DevelopmentConfig(),
+    "production":  ProductionConfig(),
+    "testing":     TestingConfig(),
 }
