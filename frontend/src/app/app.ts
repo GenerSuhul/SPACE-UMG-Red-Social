@@ -17,9 +17,10 @@ export class App {
 
   private readonly currentUrl = signal<string>('');
 
-  protected readonly showToolbar = computed(
-    () => !this.currentUrl().startsWith('/auth')
-  );
+  protected readonly showToolbar = computed(() => {
+    const url = this.currentUrl();
+    return url !== '' && !url.startsWith('/auth');
+  });
 
   protected readonly isLoggedIn = computed(() => {
     // reactive update relies on currentUrl changes to re-evaluate token presence
