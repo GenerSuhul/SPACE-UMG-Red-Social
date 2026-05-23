@@ -16,17 +16,17 @@ export class Auth {
   }
 
   registerUser(userRegister: UserRegisterInterface): Observable<any> {
-    const url = `${this.configService.appConfig.apiUrl}/auth/register`
+    const url = `${this.configService.appConfig.apiUrl}/api/auth/register`
     return this.http.post<any>(url, userRegister);
   }
 
   loginUser(userLogin: UserLoginInterface): Observable<any> {
-    const url = `${this.configService.appConfig.apiUrl}/auth/login`
+    const url = `${this.configService.appConfig.apiUrl}/api/auth/login`
     return this.http.post<any>(url, userLogin);
   }
 
   logoutUser(): Observable<any> {
-    const url = `${this.configService.appConfig.apiUrl}/auth/logout`
+    const url = `${this.configService.appConfig.apiUrl}/api/auth/logout`
     return this.http.post<any>(url, {});
   }
 }

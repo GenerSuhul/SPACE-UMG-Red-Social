@@ -92,7 +92,7 @@ def _register_blueprints(app: Flask) -> None:
     from .api.lives import lives_bp
     from .api.upload_routes import upload_bp
 
-    app.register_blueprint(auth_bp, url_prefix="/auth")
+    app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(user_bp, url_prefix="/api/users")
     app.register_blueprint(posts_bp, url_prefix="/api/posts")
     app.register_blueprint(notifications_bp, url_prefix="/api/notifications")
