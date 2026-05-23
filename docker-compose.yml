@@ -79,7 +79,7 @@ services:
       - "traefik.http.routers.space-frontend-secure.rule=Host(`space.umg.kyrosoftgs.com`)"
       - "traefik.http.routers.space-frontend-secure.entrypoints=websecure"
       - "traefik.http.routers.space-frontend-secure.tls=true"
-      - "traefik.http.routers.space-frontend-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.space-frontend-secure.tls.certresolver=cloudflare"
       # Point to frontend Nginx container port 80
       - "traefik.http.services.space-frontend-service.loadbalancer.server.port=80"
 
