@@ -77,11 +77,12 @@ def create_post():
 @jwt_required()
 @swag_from('docs/list_posts.yml')
 def list_posts():
+    user_id = get_jwt_identity()
     page = int(request.args.get("page", 1) or 1)
     page_size = int(request.args.get("page_size", 20) or 20)
     post_type = request.args.get("type")
 
-    result = PostService.list_posts(page=page, page_size=page_size, post_type=post_type)
+    result = PostService.list_posts(current_user_id=user_id, page=page, page_size=page_size, post_type=post_type)
     return js(result), 200
 
 
@@ -93,7 +94,7 @@ def my_posts():
     page = int(request.args.get("page", 1) or 1)
     page_size = int(request.args.get("page_size", 20) or 20)
 
-    result = PostService.list_posts_by_user(user_id, page=page, page_size=page_size)
+    result = PostService.list_posts_by_user(user_id, current_user_id=user_id, page=page, page_size=page_size)
     return js(result), 200
 
 
@@ -101,10 +102,11 @@ def my_posts():
 @jwt_required()
 @swag_from('docs/user_posts.yml')
 def user_posts(user_id: str):
+    current_user_id = get_jwt_identity()
     page = int(request.args.get("page", 1) or 1)
     page_size = int(request.args.get("page_size", 20) or 20)
 
-    result = PostService.list_posts_by_user(user_id, page=page, page_size=page_size)
+    result = PostService.list_posts_by_user(user_id, current_user_id=current_user_id, page=page, page_size=page_size)
     if not result["ok"]:
         return js(result), _status_for_errors(result.get("errors", []))
     return js(result), 200
@@ -129,7 +131,8 @@ def update_post(post_id: str):
 @jwt_required()
 @swag_from('docs/get_post.yml')
 def get_post(post_id: str):
-    result = PostService.get_post_with_comments(post_id)
+    user_id = get_jwt_identity()
+    result = PostService.get_post_with_comments(post_id, current_user_id=user_id)
     if not result["ok"]:
         return js(result), _status_for_errors(result.get("errors", []))
     return js(result), 200

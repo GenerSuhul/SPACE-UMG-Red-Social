@@ -1,8 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs/operators';
 import { TokenService } from './service/auth/token';
+import { UsersService } from './service/users/users';
+import { Subscription, interval } from 'rxjs';
 
 @Component({
   selector: 'app-root',
@@ -11,9 +13,11 @@ import { TokenService } from './service/auth/token';
   styleUrl: './app.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class App {
+export class App implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly tokenService = inject(TokenService);
+  private readonly usersService = inject(UsersService);
+  private heartbeatSub?: Subscription;
 
   private readonly currentUrl = signal<string>('');
 
@@ -43,6 +47,26 @@ export class App {
       });
   }
 
+  ngOnInit(): void {
+    // Online heartbeat: every 20 seconds
+    this.heartbeatSub = interval(20000).subscribe(() => {
+      if (this.tokenService.get()) {
+        this.usersService.updateOnlineStatus('online').subscribe({ error: () => {} });
+      }
+    });
+
+    // Initial immediate heartbeat on load
+    setTimeout(() => {
+      if (this.tokenService.get()) {
+        this.usersService.updateOnlineStatus('online').subscribe({ error: () => {} });
+      }
+    }, 1000);
+  }
+
+  ngOnDestroy(): void {
+    this.heartbeatSub?.unsubscribe();
+  }
+
   isActive(route: string): boolean {
     if (route === '/') {
       return this.currentUrl() === '/' || this.currentUrl() === '/feed' || this.currentUrl().startsWith('/?post=');
@@ -54,15 +78,18 @@ export class App {
     this.router.navigate([route]);
   }
 
-  triggerMobilePublish(): void {
+  createPublication(): void {
     this.router.navigate(['/']).then(() => {
-      // If we are on the feed, trigger the publisher expansion
       setTimeout(() => {
         const trigger = document.querySelector('.publisher-trigger-btn') as HTMLElement;
         if (trigger) {
           trigger.click();
         }
-      }, 100);
+      }, 150);
     });
+  }
+
+  createReel(): void {
+    this.router.navigate(['/reels'], { queryParams: { create: 'true' } });
   }
 }

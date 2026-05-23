@@ -75,7 +75,7 @@ export class PostsService {
   }
 
   createPost(content: string, files: File[] = [], mediaUrls: string[] = [], type: string = 'post'): Observable<CreatePostResponse> {
-    if (mediaUrls && mediaUrls.length > 0) {
+    if ((mediaUrls && mediaUrls.length > 0) || files.length === 0) {
       return this.http.post<CreatePostResponse>(`${this.baseUrl}/`, {
         content,
         type,
@@ -121,10 +121,10 @@ export class PostsService {
   }
 
   createComment(postId: string, content: string, parentCommentId?: string, image?: File, imageUrl?: string): Observable<CreateCommentResponse> {
-    if (imageUrl) {
+    if (imageUrl || !image) {
       const body: Record<string, unknown> = { content };
       if (parentCommentId) body['parent_comment_id'] = parentCommentId;
-      body['image_url'] = imageUrl;
+      if (imageUrl) body['image_url'] = imageUrl;
       return this.http.post<CreateCommentResponse>(`${this.baseUrl}/${postId}/comments`, body);
     }
     const fd = new FormData();

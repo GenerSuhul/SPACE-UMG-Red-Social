@@ -75,13 +75,19 @@
       @for (reel of reels; track reel.id) {
         <div class="reel-card glass-panel">
           <div class="video-wrapper">
-            <!-- HTML5 Autoplaying Looping muted video -->
+            <!-- HTML5 Autoplaying Looping dynamically muted video -->
             <video [src]="reel.media_urls?.[0]" 
                    class="reel-video" 
                    loop 
-                   muted 
-                   playsinline>
+                   [muted]="isMutedGlobal" 
+                   playsinline
+                   (click)="toggleMute($event)">
             </video>
+
+            <!-- Floating sound controller overlay button -->
+            <button class="mute-overlay-btn" (click)="toggleMute($event)" [attr.aria-label]="isMutedGlobal ? 'Activar sonido' : 'Silenciar'">
+              <mat-icon>{{ isMutedGlobal ? 'volume_off' : 'volume_up' }}</mat-icon>
+            </button>
 
             <!-- Video Overlay with Text & Author -->
             <div class="video-overlay">
@@ -97,8 +103,8 @@
 
               <!-- Interactions sidebar -->
               <div class="interactions-sidebar">
-                <button mat-fab class="action-btn" (click)="likeReel(reel)">
-                  <mat-icon>favorite</mat-icon>
+                <button mat-fab class="action-btn" [class.liked]="reel.my_reaction === 'like'" (click)="likeReel(reel)">
+                  <mat-icon>{{ reel.my_reaction === 'like' ? 'favorite' : 'favorite_border' }}</mat-icon>
                   <span class="count-label">{{ getLikesCount(reel) }}</span>
                 </button>
 

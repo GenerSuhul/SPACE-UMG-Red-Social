@@ -6,9 +6,20 @@
 @if (isLoggedIn()) {
   @if (showMobileFab()) {
     <!-- Floating Publish FAB Button for Mobile -->
-    <button class="mobile-fab-publish" (click)="triggerMobilePublish()" title="Publicar">
+    <button class="mobile-fab-publish" [matMenuTriggerFor]="publishMenu" title="Crear">
       <mat-icon>add</mat-icon>
     </button>
+
+    <mat-menu #publishMenu="matMenu" yPosition="above" xPosition="before" class="premium-publish-menu">
+      <button mat-menu-item (click)="createPublication()">
+        <mat-icon color="primary">chat_bubble_outline</mat-icon>
+        <span>Publicación / Historia</span>
+      </button>
+      <button mat-menu-item (click)="createReel()">
+        <mat-icon color="accent">videocam</mat-icon>
+        <span>Reel UMG</span>
+      </button>
+    </mat-menu>
   }
 
   <!-- Mobile Bottom Navigation Bar -->

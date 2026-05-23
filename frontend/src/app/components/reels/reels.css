@@ -324,3 +324,48 @@
   font-size: 0.8rem;
   color: var(--text-secondary);
 }
+
+/* Floating sound controller overlay button */
+.mute-overlay-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 50% !important;
+  width: 42px !important;
+  height: 42px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+  z-index: 10;
+  transition: all var(--transition-fast);
+  outline: none;
+}
+
+.mute-overlay-btn:hover {
+  background: rgba(0, 0, 0, 0.6) !important;
+  transform: scale(1.05);
+}
+
+.mute-overlay-btn mat-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  margin: 0 !important;
+}
+
+/* Liked state for action-btn */
+.action-btn.liked {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+.action-btn.liked mat-icon {
+  color: var(--error-color) !important;
+  font-variation-settings: 'FILL' 1;
+}

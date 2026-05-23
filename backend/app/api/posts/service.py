@@ -215,7 +215,7 @@ class PostService:
         return {"ok": True, "post": _serialize_post(post_doc, profiles)}
 
     @staticmethod
-    def list_posts(page: int = 1, page_size: int = 20, post_type: str | None = None) -> dict:
+    def list_posts(current_user_id: str | None = None, page: int = 1, page_size: int = 20, post_type: str | None = None) -> dict:
         page = max(1, page)
         page_size = max(1, min(100, page_size))
         skip = (page - 1) * page_size
@@ -226,13 +226,48 @@ class PostService:
         else:
             q["type"] = {"$in": ["post", None]}
 
+        # Feed dynamic filter (Following only + Ads) - Exclude Reels from this private filter
+        if current_user_id and post_type != "reel":
+            user_doc = UserRepository.find_by_id(current_user_id)
+            following_ids = []
+            if user_doc:
+                following_ids = [ObjectId(f["id"]) for f in user_doc.get("following", []) if ObjectId.is_valid(f.get("id"))]
+            
+            allowed_author_ids = following_ids + [ObjectId(current_user_id)]
+            
+            # Retrieve users who have public profiles and are advertised
+            from backend.app.extensions import mongo
+            advertised_users = mongo.db.users.find({"privacy": "public", "is_advertised": True}, {"_id": 1})
+            advertised_ids = [u["_id"] for u in advertised_users]
+            
+            all_allowed_author_ids = list(set(allowed_author_ids + advertised_ids))
+            q["author_id"] = {"$in": all_allowed_author_ids}
+
         posts = PostRepository.list_posts(skip=skip, limit=page_size, query_filter=q)
         total = PostRepository.count_posts(query_filter=q)
         profiles = _fetch_usernames(posts)
 
+        # Batch query user reactions
+        user_reactions = {}
+        if current_user_id and posts:
+            from backend.app.extensions import mongo
+            post_ids = [p["_id"] for p in posts]
+            reactions = mongo.db.reactions.find({
+                "user_id": ObjectId(current_user_id),
+                "target_id": {"$in": post_ids},
+                "target_type": "post"
+            })
+            user_reactions = {str(r["target_id"]): r["reaction_type"] for r in reactions}
+
+        serialized_posts = []
+        for p in posts:
+            sp = _serialize_post(p, profiles)
+            sp["my_reaction"] = user_reactions.get(sp["id"])
+            serialized_posts.append(sp)
+
         return {
             "ok": True,
-            "posts": [_serialize_post(p, profiles) for p in posts],
+            "posts": serialized_posts,
             "pagination": {
                 "page":       page,
                 "page_size":  page_size,
@@ -242,7 +277,7 @@ class PostService:
         }
 
     @staticmethod
-    def get_post_with_comments(post_id: str) -> dict:
+    def get_post_with_comments(post_id: str, current_user_id: str | None = None) -> dict:
         if not _is_valid_object_id(post_id):
             return {"ok": False, "errors": [{"field": "post_id", "message": "Id de post inválido"}]}
 
@@ -253,10 +288,43 @@ class PostService:
         comments = CommentRepository.list_by_post(post_id, skip=0, limit=100)
         profiles = _fetch_usernames([post] + comments)
 
+        # Query user reaction to the post
+        my_post_reaction = None
+        if current_user_id:
+            from backend.app.extensions import mongo
+            rx = mongo.db.reactions.find_one({
+                "user_id": ObjectId(current_user_id),
+                "target_id": ObjectId(post_id),
+                "target_type": "post"
+            })
+            if rx:
+                my_post_reaction = rx["reaction_type"]
+
+        # Batch query user reactions to comments
+        user_comment_reactions = {}
+        if current_user_id and comments:
+            from backend.app.extensions import mongo
+            comment_ids = [c["_id"] for c in comments]
+            rx_comments = mongo.db.reactions.find({
+                "user_id": ObjectId(current_user_id),
+                "target_id": {"$in": comment_ids},
+                "target_type": "comment"
+            })
+            user_comment_reactions = {str(r["target_id"]): r["reaction_type"] for r in rx_comments}
+
+        serialized_post = _serialize_post(post, profiles)
+        serialized_post["my_reaction"] = my_post_reaction
+
+        serialized_comments = []
+        for c in comments:
+            sc = _serialize_comment(c, profiles)
+            sc["my_reaction"] = user_comment_reactions.get(sc["id"])
+            serialized_comments.append(sc)
+
         return {
             "ok": True,
-            "post":     _serialize_post(post, profiles),
-            "comments": [_serialize_comment(c, profiles) for c in comments],
+            "post":     serialized_post,
+            "comments": serialized_comments,
         }
 
     @staticmethod
@@ -306,7 +374,7 @@ class PostService:
         return {"ok": True, "post": _serialize_post(updated, profiles)}
 
     @staticmethod
-    def list_posts_by_user(user_id: str, page: int = 1, page_size: int = 20) -> dict:
+    def list_posts_by_user(user_id: str, current_user_id: str | None = None, page: int = 1, page_size: int = 20) -> dict:
         if not _is_valid_object_id(user_id):
             return {"ok": False, "errors": [{"field": "user_id", "message": "Id de usuario inválido"}]}
 
@@ -322,9 +390,27 @@ class PostService:
         total = PostRepository.count_by_author(user_id)
         profiles = _fetch_usernames(posts)
 
+        # Batch query user reactions
+        user_reactions = {}
+        if current_user_id and posts:
+            from backend.app.extensions import mongo
+            post_ids = [p["_id"] for p in posts]
+            reactions = mongo.db.reactions.find({
+                "user_id": ObjectId(current_user_id),
+                "target_id": {"$in": post_ids},
+                "target_type": "post"
+            })
+            user_reactions = {str(r["target_id"]): r["reaction_type"] for r in reactions}
+
+        serialized_posts = []
+        for p in posts:
+            sp = _serialize_post(p, profiles)
+            sp["my_reaction"] = user_reactions.get(sp["id"])
+            serialized_posts.append(sp)
+
         return {
             "ok": True,
-            "posts": [_serialize_post(p, profiles) for p in posts],
+            "posts": serialized_posts,
             "pagination": {
                 "page":        page,
                 "page_size":   page_size,

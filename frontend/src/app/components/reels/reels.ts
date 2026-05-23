@@ -11,6 +11,7 @@ import { HttpEvent, HttpEventType } from '@angular/common/http';
 import { PostsService } from '../../service/posts/posts';
 import { UploadService } from '../../service/upload';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { ActivatedRoute } from '@angular/router';
 
 // Videos simulados de stock en caso de que no haya en la base de datos
 const DEFAULT_REELS = [
@@ -52,6 +53,7 @@ export class Reels implements OnInit, OnDestroy {
   private readonly uploadService = inject(UploadService);
   private readonly snackBar     = inject(MatSnackBar);
   private readonly cdr          = inject(ChangeDetectorRef);
+  private readonly route        = inject(ActivatedRoute);
 
   reels: any[] = [];
   showCreateForm = false;
@@ -59,6 +61,7 @@ export class Reels implements OnInit, OnDestroy {
   uploadProgress = 0;
   selectedFile: File | null = null;
   selectedFileName = '';
+  isMutedGlobal = true;
   
   private observer: IntersectionObserver | null = null;
 
@@ -68,6 +71,12 @@ export class Reels implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadReels();
+    this.route.queryParams.subscribe(params => {
+      if (params['create'] === 'true') {
+        this.showCreateForm = true;
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -95,6 +104,20 @@ export class Reels implements OnInit, OnDestroy {
     });
   }
 
+  toggleMute(event: Event): void {
+    event.stopPropagation();
+    this.isMutedGlobal = !this.isMutedGlobal;
+    
+    // Apply mute state to all video elements currently in the DOM
+    const videoElements = document.querySelectorAll('.reel-video');
+    videoElements.forEach((el: any) => {
+      el.muted = this.isMutedGlobal;
+    });
+    
+    this.snackBar.open(this.isMutedGlobal ? 'Reels silenciados' : 'Sonido activado', 'Cerrar', { duration: 1500 });
+    this.cdr.markForCheck();
+  }
+
   private initVideoObserver(): void {
     if (typeof window === 'undefined') return;
 
@@ -109,8 +132,15 @@ export class Reels implements OnInit, OnDestroy {
         entries.forEach(entry => {
           const video = entry.target as HTMLVideoElement;
           if (entry.isIntersecting) {
-            video.muted = true; // Required by browsers to trigger programatic play
-            video.play().catch(err => console.log('Video play blocked:', err));
+            video.muted = this.isMutedGlobal;
+            video.play().catch(err => {
+              console.log('Video play blocked:', err);
+              // Fallback to muted if play fails due to auto-play rules
+              if (!video.muted) {
+                video.muted = true;
+                video.play().catch(e => console.log('Fallback play blocked:', e));
+              }
+            });
           } else {
             video.pause();
           }
@@ -211,16 +241,32 @@ export class Reels implements OnInit, OnDestroy {
   }
 
   likeReel(reel: any): void {
-    this.postsService.reactToPost(reel.id, 'like').subscribe({
-      next: (res) => {
-        if (res.ok) {
-          if (!reel.reactions_count) reel.reactions_count = { like: 0 };
-          reel.reactions_count.like++;
-          this.cdr.markForCheck();
-          this.snackBar.open('¡Te gustó este Reel!', 'Cerrar', { duration: 1500 });
+    const hasLiked = reel.my_reaction === 'like';
+    if (hasLiked) {
+      this.postsService.removePostReaction(reel.id).subscribe({
+        next: (res) => {
+          if (res.ok) {
+            reel.my_reaction = null;
+            if (!reel.reactions_count) reel.reactions_count = { like: 0 };
+            reel.reactions_count.like = Math.max(0, reel.reactions_count.like - 1);
+            this.cdr.markForCheck();
+            this.snackBar.open('Quitaste tu me gusta', 'Cerrar', { duration: 1500 });
+          }
         }
-      }
-    });
+      });
+    } else {
+      this.postsService.reactToPost(reel.id, 'like').subscribe({
+        next: (res) => {
+          if (res.ok) {
+            reel.my_reaction = 'like';
+            if (!reel.reactions_count) reel.reactions_count = { like: 0 };
+            reel.reactions_count.like++;
+            this.cdr.markForCheck();
+            this.snackBar.open('¡Te gustó este Reel!', 'Cerrar', { duration: 1500 });
+          }
+        }
+      });
+    }
   }
 
   getLikesCount(reel: any): number {

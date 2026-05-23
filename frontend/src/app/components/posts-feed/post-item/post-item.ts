@@ -7,6 +7,7 @@ import {
   signal,
   DestroyRef,
   inject,
+  OnInit,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -53,11 +54,17 @@ interface ReplyState {
   styleUrl: './post-item.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PostItem {
+export class PostItem implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly uploadService = inject(UploadService);
 
   @Input({ required: true }) post!: Post;
+
+  ngOnInit(): void {
+    if (this.post && this.post.my_reaction) {
+      this.myPostReaction.set(this.post.my_reaction);
+    }
+  }
   @Input() interactive = false;
   @Output() postDeleted = new EventEmitter<string>();
   @Output() postUpdated = new EventEmitter<Post>();
@@ -149,10 +156,10 @@ export class PostItem {
 
   // ---- Comment reaction state accessors ----
 
-  private getOrCreateCommentReactionState(commentId: string) {
+  private getOrCreateCommentReactionState(commentId: string, initial: ReactionType | null = null) {
     if (!this.commentReactionMap.has(commentId)) {
       this.commentReactionMap.set(commentId, {
-        myReaction: signal<ReactionType | null>(null),
+        myReaction: signal<ReactionType | null>(initial),
         reacting:   signal(false),
       });
     }
@@ -160,7 +167,21 @@ export class PostItem {
   }
 
   myCommentReaction(commentId: string): ReactionType | null {
-    return this.getOrCreateCommentReactionState(commentId).myReaction();
+    let comment = this.comments().find(c => c.id === commentId);
+    if (!comment) {
+      for (const parentId of this.replyStateMap.keys()) {
+        const replies = this.replyStateMap.get(parentId)?.replies();
+        if (replies) {
+          const found = replies.find(r => r.id === commentId);
+          if (found) {
+            comment = found;
+            break;
+          }
+        }
+      }
+    }
+    const initial = comment?.my_reaction || null;
+    return this.getOrCreateCommentReactionState(commentId, initial).myReaction();
   }
 
   isReactingToComment(commentId: string): boolean {

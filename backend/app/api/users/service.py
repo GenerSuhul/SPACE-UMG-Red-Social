@@ -1,4 +1,5 @@
 from pydantic import ValidationError
+from datetime import datetime, timezone
 
 from .repository import UserRepository
 from .schemas import UserSchema, UserUpdateSchema, UserPublicSchema
@@ -125,6 +126,18 @@ class UserService:
 
     @staticmethod
     def _serialize_public(user: dict) -> dict:
+        status = user.get("online_status", "offline")
+        if status == "online":
+            last_seen = user.get("last_seen")
+            if last_seen:
+                if last_seen.tzinfo is None:
+                    last_seen = last_seen.replace(tzinfo=timezone.utc)
+                now = datetime.now(timezone.utc)
+                if (now - last_seen).total_seconds() > 45:
+                    status = "offline"
+            else:
+                status = "offline"
+
         return {
             "id":            str(user["_id"]),
             "username":      user.get("username", ""),
@@ -133,7 +146,7 @@ class UserService:
             "age":           user.get("age", 0),
             "biography":     user.get("biography", "") or "",
             "privacy":       user.get("privacy", "public"),
-            "online_status": user.get("online_status", "offline"),
+            "online_status": status,
             "avatar_base64": user.get("avatar_base64"),
             "avatar_mime":   user.get("avatar_mime"),
             "avatar_url":    user.get("avatar_url"),

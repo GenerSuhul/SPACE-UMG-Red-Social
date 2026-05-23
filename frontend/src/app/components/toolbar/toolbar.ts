@@ -147,6 +147,9 @@ export class Toolbar implements OnInit, OnDestroy {
   }
 
   logout(): void {
+    if (this.tokenService.get()) {
+      this.usersService.updateOnlineStatus('offline').subscribe();
+    }
     this.authService.logoutUser().subscribe({
       next: () => this.clearAndRedirect(),
       error: () => this.clearAndRedirect(),

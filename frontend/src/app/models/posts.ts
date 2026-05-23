@@ -28,6 +28,7 @@ export interface Post {
   updated_at:            string | null;
   reactions_count:       ReactionsCount;
   comments_count:        number;
+  my_reaction?:          ReactionType | null;
 }
 
 export interface Comment {
@@ -45,6 +46,7 @@ export interface Comment {
   image_url?:           string | null;
   created_at:           string;
   reactions_count:      ReactionsCount;
+  my_reaction?:         ReactionType | null;
 }
 
 export interface Reaction {
