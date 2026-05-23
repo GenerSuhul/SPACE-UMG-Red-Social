@@ -64,13 +64,12 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: space-frontend
-    # No bind ports on host to avoid conflicts. Dokploy's Traefik routes directly inside overlay network.
+    # No bind ports on host to avoid conflicts. Traefik routes directly inside shared network.
     depends_on:
       - backend
       - websocket
     networks:
       - space-network
-      - dokploy-network
     labels:
       - "traefik.enable=true"
       # HTTP Router (Port 80)
@@ -90,6 +89,3 @@ volumes:
 networks:
   space-network:
     driver: bridge
-  dokploy-network:
-    external: true
-    name: dokploy-network
