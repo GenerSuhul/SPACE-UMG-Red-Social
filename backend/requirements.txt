@@ -7,3 +7,6 @@ python-dotenv
 pymongo[srv]
 boto3
 Pillow
+bcrypt
+pydantic
+email-validator
