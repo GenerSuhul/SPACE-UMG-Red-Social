@@ -24,11 +24,12 @@ class PostRepository:
             return None
 
     @staticmethod
-    def list_posts(skip: int = 0, limit: int = 20) -> list[dict]:
+    def list_posts(skip: int = 0, limit: int = 20, query_filter: dict | None = None) -> list[dict]:
         try:
+            q = query_filter if query_filter is not None else {}
             cursor = (
                 mongo.db.posts
-                .find({})
+                .find(q)
                 .sort("created_at", DESCENDING)
                 .skip(skip)
                 .limit(limit)
@@ -39,9 +40,10 @@ class PostRepository:
             return []
 
     @staticmethod
-    def count_posts() -> int:
+    def count_posts(query_filter: dict | None = None) -> int:
         try:
-            return mongo.db.posts.count_documents({})
+            q = query_filter if query_filter is not None else {}
+            return mongo.db.posts.count_documents(q)
         except Exception as ex:
             print(f"Error counting posts: {ex}")
             return 0

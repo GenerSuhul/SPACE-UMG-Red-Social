@@ -1,0 +1,6 @@
+# backend/app/api/notifications/__init__.py
+from flask import Blueprint
+
+notifications_bp = Blueprint('notifications', __name__)
+
+from . import routes

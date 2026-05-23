@@ -36,13 +36,15 @@ class UserRepository:
             oids = [ObjectId(uid) for uid in user_ids]
             cursor = mongo.db.users.find(
                 {"_id": {"$in": oids}},
-                {"username": 1, "avatar_base64": 1, "avatar_mime": 1},
+                {"username": 1, "avatar_base64": 1, "avatar_mime": 1, "avatar_url": 1},
             )
             return {
                 str(u["_id"]): {
                     "username":      u.get("username", ""),
-                    "avatar_base64": u.get("avatar_base64"),
+                    # OPTIMIZATION: If avatar_url exists, omit transferring the heavy base64 avatar
+                    "avatar_base64": None if u.get("avatar_url") else u.get("avatar_base64"),
                     "avatar_mime":   u.get("avatar_mime"),
+                    "avatar_url":    u.get("avatar_url"),
                 }
                 for u in cursor
             }
@@ -56,7 +58,7 @@ class UserRepository:
             cursor = mongo.db.users.find(
                 {"username": {"$regex": query, "$options": "i"}},
                 {"username": 1, "first_name": 1, "last_name": 1, "age": 1,
-                 "avatar_base64": 1, "avatar_mime": 1},
+                 "avatar_base64": 1, "avatar_mime": 1, "avatar_url": 1},
             ).limit(limit)
             return list(cursor)
         except Exception as ex:
@@ -176,3 +178,112 @@ class UserRepository:
         except Exception as ex:
             print(f"Error getting follow counts: {ex}")
             return {"followers_count": 0, "following_count": 0}
+
+    @staticmethod
+    def update_online_status(user_id: str, status: str) -> None:
+        try:
+            mongo.db.users.update_one(
+                {"_id": ObjectId(user_id)},
+                {"$set": {"online_status": status, "last_seen": datetime.now(timezone.utc)}}
+            )
+        except Exception as ex:
+            print(f"Error updating online status: {ex}")
+
+    @staticmethod
+    def get_friend_recommendations(user_id: str, limit: int = 5) -> list[dict]:
+        try:
+            current_user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+            if not current_user:
+                return []
+            
+            already_following = [f["id"] for f in current_user.get("following", []) or []]
+            already_following.append(str(current_user["_id"]))
+            
+            pipeline = [
+                {"$match": {"_id": ObjectId(user_id)}},
+                {"$unwind": "$following"},
+                {"$lookup": {
+                    "from": "users",
+                    "let": {"followed_id": "$following.id"},
+                    "pipeline": [
+                        {"$match": {"$expr": {"$eq": ["$_id", {"$toObjectId": "$$followed_id"}]}}}
+                    ],
+                    "as": "friend_doc"
+                }},
+                {"$unwind": "$friend_doc"},
+                {"$unwind": "$friend_doc.following"},
+                {"$group": {
+                    "_id": "$friend_doc.following.id",
+                    "mutual_count": {"$sum": 1}
+                }},
+                {"$match": {"_id": {"$nin": already_following}}},
+                {"$sort": {"mutual_count": -1}},
+                {"$limit": limit},
+                {"$lookup": {
+                    "from": "users",
+                    "let": {"rec_id": "$_id"},
+                    "pipeline": [
+                        {"$match": {"$expr": {"$eq": ["$_id", {"$toObjectId": "$$rec_id"}]}}}
+                    ],
+                    "as": "user_info"
+                }},
+                {"$unwind": "$user_info"},
+                {"$project": {
+                    "id": {"$toString": "$user_info._id"},
+                    "username": "$user_info.username",
+                    "first_name": "$user_info.first_name",
+                    "last_name": "$user_info.last_name",
+                    "avatar_base64": "$user_info.avatar_base64",
+                    "avatar_mime": "$user_info.avatar_mime",
+                    "mutual_count": 1
+                }}
+            ]
+            
+            recs = list(mongo.db.users.aggregate(pipeline))
+            
+            if len(recs) < limit:
+                needed = limit - len(recs)
+                existing_ids = [r["id"] for r in recs] + already_following
+                popular_cursor = mongo.db.users.find(
+                    {"_id": {"$nin": [ObjectId(eid) for eid in existing_ids if ObjectId.is_valid(eid)]}},
+                    {"username": 1, "first_name": 1, "last_name": 1, "avatar_base64": 1, "avatar_mime": 1}
+                ).limit(needed)
+                for u in popular_cursor:
+                    recs.append({
+                        "id": str(u["_id"]),
+                        "username": u.get("username", ""),
+                        "first_name": u.get("first_name", ""),
+                        "last_name": u.get("last_name", ""),
+                        "avatar_base64": u.get("avatar_base64"),
+                        "avatar_mime": u.get("avatar_mime"),
+                        "mutual_count": 0
+                    })
+            return recs
+        except Exception as ex:
+            print(f"Error getting recommendations: {ex}")
+            try:
+                current_user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+                already_following = [f["id"] for f in (current_user.get("following", []) or [])]
+                already_following.append(str(user_id))
+                oids = []
+                for eid in already_following:
+                    try:
+                        oids.append(ObjectId(eid))
+                    except:
+                        pass
+                popular = mongo.db.users.find(
+                    {"_id": {"$nin": oids}},
+                    {"username": 1, "first_name": 1, "last_name": 1, "avatar_base64": 1, "avatar_mime": 1}
+                ).limit(limit)
+                return [{
+                    "id": str(u["_id"]),
+                    "username": u.get("username", ""),
+                    "first_name": u.get("first_name", ""),
+                    "last_name": u.get("last_name", ""),
+                    "avatar_base64": u.get("avatar_base64"),
+                    "avatar_mime": u.get("avatar_mime"),
+                    "mutual_count": 0
+                } for u in popular]
+            except Exception as inner_ex:
+                print(f"Error in backup recommendations: {inner_ex}")
+                return []

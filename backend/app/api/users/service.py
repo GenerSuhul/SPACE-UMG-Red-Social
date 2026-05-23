@@ -19,11 +19,19 @@ class UserService:
             return {"ok": False, "error": [{"field": "user", "message": "Usuario no encontrado"}]}
 
         user_found.setdefault("is_active", True)
+        user_found.setdefault("biography", None)
+        user_found.setdefault("privacy", "public")
         user_found.setdefault("avatar_base64", None)
         user_found.setdefault("avatar_mime", None)
-        uesr_parsed = UserSchema(**user_found)
+        user_found.setdefault("avatar_url", None)
+        user_found.setdefault("cover_url", None)
+        user_found.setdefault("cover_base64", None)
+        user_found.setdefault("cover_mime", None)
+        user_found["followers_count"] = len(user_found.get("followers", []) or [])
+        user_found["following_count"] = len(user_found.get("following", []) or [])
+        user_parsed = UserSchema(**user_found)
 
-        return {"ok": True, "user": uesr_parsed.model_dump()}
+        return {"ok": True, "user": user_parsed.model_dump()}
 
     @staticmethod
     def update_user(id_user: str, data: dict | None) -> dict:
@@ -94,8 +102,16 @@ class UserService:
             }
 
         updated_user.setdefault("is_active", True)
+        updated_user.setdefault("biography", None)
+        updated_user.setdefault("privacy", "public")
         updated_user.setdefault("avatar_base64", None)
         updated_user.setdefault("avatar_mime", None)
+        updated_user.setdefault("avatar_url", None)
+        updated_user.setdefault("cover_url", None)
+        updated_user.setdefault("cover_base64", None)
+        updated_user.setdefault("cover_mime", None)
+        updated_user["followers_count"] = len(updated_user.get("followers", []) or [])
+        updated_user["following_count"] = len(updated_user.get("following", []) or [])
         user_parsed = UserSchema(**updated_user)
         return {"ok": True, "user": user_parsed.model_dump()}
 
@@ -115,8 +131,17 @@ class UserService:
             "first_name":    user.get("first_name", ""),
             "last_name":     user.get("last_name", ""),
             "age":           user.get("age", 0),
+            "biography":     user.get("biography", "") or "",
+            "privacy":       user.get("privacy", "public"),
+            "online_status": user.get("online_status", "offline"),
             "avatar_base64": user.get("avatar_base64"),
             "avatar_mime":   user.get("avatar_mime"),
+            "avatar_url":    user.get("avatar_url"),
+            "cover_url":     user.get("cover_url"),
+            "cover_base64":  user.get("cover_base64"),
+            "cover_mime":    user.get("cover_mime"),
+            "followers_count": len(user.get("followers", []) or []),
+            "following_count": len(user.get("following", []) or []),
         }
 
     @staticmethod
@@ -144,14 +169,35 @@ class UserService:
         if not user:
             return {"ok": False, "errors": [{"field": "user", "message": "Usuario no encontrado"}]}
 
+        is_self = str(current_user_id) == str(user_id)
         is_following = (
             UserRepository.is_following(current_user_id, user_id)
-            if current_user_id and current_user_id != user_id
+            if current_user_id and not is_self
             else False
         )
 
         profile = UserService._serialize_public(user)
         profile["is_following"] = is_following
+
+        # Verificar privacidad
+        privacy = user.get("privacy", "public")
+        is_locked = False
+        if not is_self:
+            if privacy == "private" and not is_following:
+                is_locked = True
+            elif privacy == "friends":
+                is_followed_back = UserRepository.is_following(user_id, current_user_id) if current_user_id else False
+                if not (is_following and is_followed_back):
+                    is_locked = True
+
+        profile["is_locked"] = is_locked
+        if is_locked:
+            profile["age"] = 0
+            profile["biography"] = "Este perfil es privado."
+        
+        profile["followers_count"] = len(user.get("followers", []) or [])
+        profile["following_count"] = len(user.get("following", []) or [])
+
         return {"ok": True, "user": profile}
 
     @staticmethod
@@ -211,6 +257,12 @@ class UserService:
                 current_user_id, current_info, target_user_id, target_info
             )
             action = "followed"
+            if ok:
+                try:
+                    from backend.app.api.notifications.service import NotificationService
+                    NotificationService.trigger_follow(current_user_id, target_user_id)
+                except Exception as ex:
+                    print(f"Error triggering follow notification: {ex}")
 
         if not ok:
             return {
@@ -226,3 +278,19 @@ class UserService:
             "followers_count": counts["followers_count"],
             "following_count": counts["following_count"],
         }
+
+    @staticmethod
+    def get_recommendations(user_id: str, limit: int = 5) -> dict:
+        if not user_id or not UserService._is_valid_object_id(user_id):
+            return {"ok": False, "errors": [{"field": "id", "message": "Id inválido"}]}
+        recs = UserRepository.get_friend_recommendations(user_id, limit=limit)
+        return {"ok": True, "users": recs}
+
+    @staticmethod
+    def update_status(user_id: str, status: str) -> dict:
+        if not user_id or not UserService._is_valid_object_id(user_id):
+            return {"ok": False, "errors": [{"field": "id", "message": "Id inválido"}]}
+        if status not in ("online", "offline"):
+            return {"ok": False, "errors": [{"field": "status", "message": "Estado inválido"}]}
+        UserRepository.update_online_status(user_id, status)
+        return {"ok": True}

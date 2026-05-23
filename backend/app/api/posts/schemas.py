@@ -53,6 +53,7 @@ class PostCreateSchema(BaseModel):
     content:    str                    = Field(..., min_length=1, max_length=5000)
     media_urls: list[str]              = Field(default_factory=list)
     images:     list[PostImageSchema]  = Field(default_factory=list)
+    type:       Literal["post", "reel", "story"] = "post"
 
     @field_validator("content")
     @classmethod
@@ -143,6 +144,7 @@ class PostResponseSchema(BaseModel):
     updated_at:      str | None = None
     reactions_count: dict[str, int]
     comments_count:  int
+    type:            str
 
 
 # ---------------------------------------------------------------------------
@@ -153,14 +155,16 @@ class CommentCreateSchema(BaseModel):
     Schema para crear un comentario en un post.
     `post_id` viene de la URL, `author_id` del JWT — ambos se inyectan en service.
 
-    Soporta opcionalmente una imagen Base64 embebida igual que los posts.
+    Soporta opcionalmente una imagen Base64 embebida igual que los posts
+    y el nuevo estándar image_url para Cloudflare R2.
     """
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     content:           str       = Field(..., min_length=1, max_length=2000)
     parent_comment_id: str | None = None
     image_base64:      str | None = None
     image_mime:        str | None = None
+    image_url:         str | None = None
 
     @field_validator("content")
     @classmethod
@@ -192,6 +196,7 @@ class CommentResponseSchema(BaseModel):
     parent_comment_id: str | None = None
     image_base64:      str | None = None
     image_mime:        str | None = None
+    image_url:         str | None = None
     created_at:        str
     reactions_count:   dict[str, int]
 

@@ -1,0 +1,114 @@
+<div class="lives-page fade-in">
+  <div class="lives-header">
+    <div class="header-main-title">
+      <h2><mat-icon>live_tv</mat-icon> Transmisiones en Vivo</h2>
+      <p class="subtitle">Conéctate y comparte con la comunidad de SPACE UMG en tiempo real.</p>
+    </div>
+    @if (!currentStream) {
+      <div class="start-live-bar glass-panel animate-slide-down">
+        <mat-form-field appearance="outline" class="title-field">
+          <mat-label>Título de tu transmisión</mat-label>
+          <input matInput [formControl]="titleControl" placeholder="Ej. Tesis de Base de Datos II - Presentación">
+          <mat-icon matSuffix class="input-icon">title</mat-icon>
+        </mat-form-field>
+        <button mat-flat-button class="btn-primary" [disabled]="titleControl.invalid" (click)="startSimulatedLive()">
+          <mat-icon>videocam</mat-icon> Transmitir
+        </button>
+      </div>
+    }
+  </div>
+
+  @if (!currentStream) {
+    <!-- Active Streams List -->
+    <div class="streams-section">
+      <h3 class="section-title">Directos Activos</h3>
+      <div class="streams-grid">
+        @if (activeLives.length === 0) {
+          <div class="no-lives glass-panel">
+            <div class="pulsing-live-container">
+              <mat-icon class="pulse-icon">sensors</mat-icon>
+            </div>
+            <p class="no-live-title">No hay transmisiones activas en este momento</p>
+            <span class="no-live-subtitle">¡Sé el primero en iniciar un directo para SPACE UMG!</span>
+          </div>
+        } @else {
+          @for (stream of activeLives; track stream.id) {
+            <div class="stream-card glass-panel" (click)="joinLive(stream)">
+              <div class="card-video-overlay">
+                <div class="card-badges">
+                  <span class="live-badge"><span class="badge-dot"></span>EN VIVO</span>
+                  <span class="viewers-badge">
+                    <mat-icon>visibility</mat-icon> {{ stream.viewers_count }}
+                  </span>
+                </div>
+                <div class="stream-creator-info">
+                  <div class="avatar-fallback">{{ stream.creator_username.substring(0, 2).toUpperCase() }}</div>
+                  <div class="creator-meta">
+                    <h4>{{ stream.title }}</h4>
+                    <p>@{{ stream.creator_username }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  } @else {
+    <!-- Active Stream View -->
+    <div class="active-live-container glass-panel animate-scale-up">
+      <!-- Left side: Simulated Video Player -->
+      <div class="video-section">
+        <video [src]="simulatedStreamUrl" class="live-video" loop muted autoplay playsinline></video>
+        <div class="video-overlay-info">
+          <div class="stream-header-info">
+            <span class="live-badge"><span class="badge-dot"></span>EN VIVO</span>
+            <span class="viewers-badge"><mat-icon>visibility</mat-icon> {{ viewersCount }} espectadores</span>
+          </div>
+          <div class="stream-footer-info">
+            <div class="creator-profile">
+              <div class="avatar-fallback big">{{ currentStream.creator_username.substring(0, 2).toUpperCase() }}</div>
+              <div>
+                <h3>{{ currentStream.title }}</h3>
+                <p>Transmitido por @{{ currentStream.creator_username }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="stream-controls">
+          @if (isStreamOwner()) {
+            <button mat-flat-button color="warn" class="btn-danger" (click)="endMyLive()">
+              <mat-icon>videocam_off</mat-icon> Finalizar Directo
+            </button>
+          } @else {
+            <button mat-flat-button class="btn-secondary" (click)="leaveLive()">
+              <mat-icon>logout</mat-icon> Salir del Directo
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Right side: Live Chat Emulation -->
+      <div class="live-chat-section">
+        <div class="chat-header">
+          <h3>Chat de Transmisión</h3>
+          <span class="chat-sub">SPACE UMG DIRECTO</span>
+        </div>
+        <div class="live-chat-messages">
+          @for (chat of chatMessages; track $index) {
+            <div class="live-chat-bubble" [class.system-msg]="chat.username === 'SPACE UMG'">
+              <span class="chat-user">@{{ chat.username }}:</span>
+              <span class="chat-text">{{ chat.content }}</span>
+            </div>
+          }
+        </div>
+        <div class="live-chat-input-area">
+          <input type="text" [formControl]="commentControl" placeholder="Envía un comentario..." (keydown.enter)="sendComment()">
+          <button class="chat-send-btn" (click)="sendComment()" [disabled]="!commentControl.value.trim()">
+            <mat-icon>send</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

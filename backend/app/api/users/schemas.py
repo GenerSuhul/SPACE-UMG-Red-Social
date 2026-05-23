@@ -11,8 +11,16 @@ class UserPublicSchema(BaseModel):
     first_name:    str
     last_name:     str
     age:           int
+    biography:     str | None = None
+    privacy:       str = "public"
     avatar_base64: str | None = None
     avatar_mime:   str | None = None
+    avatar_url:    str | None = None
+    cover_url:     str | None = None
+    cover_base64:  str | None = None
+    cover_mime:    str | None = None
+    followers_count: int | None = 0
+    following_count: int | None = 0
 
 
 class UserSchema(BaseModel):
@@ -23,8 +31,16 @@ class UserSchema(BaseModel):
     first_name:    str
     last_name:     str
     is_active:     bool
+    biography:     str | None = None
+    privacy:       str = "public"
     avatar_base64: str | None = None
     avatar_mime:   str | None = None
+    avatar_url:    str | None = None
+    cover_url:     str | None = None
+    cover_base64:  str | None = None
+    cover_mime:    str | None = None
+    followers_count: int | None = 0
+    following_count: int | None = 0
 
 
 class UserUpdateSchema(BaseModel):
@@ -40,9 +56,25 @@ class UserUpdateSchema(BaseModel):
     age:           int       | None = Field(default=None, ge=0, le=150)
     first_name:    str       | None = None
     last_name:     str       | None = None
+    biography:     str       | None = None
+    privacy:       str       | None = None
     is_active:     bool      | None = True
     avatar_base64: str       | None = None
     avatar_mime:   str       | None = None
+    avatar_url:    str       | None = None
+    cover_url:     str       | None = None
+    cover_base64:  str       | None = None
+    cover_mime:    str       | None = None
+
+    @field_validator("privacy")
+    @classmethod
+    def validate_privacy(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        cleaned = value.strip().lower()
+        if cleaned not in ("public", "friends", "private"):
+            raise ValueError("La privacidad debe ser 'public', 'friends' o 'private'")
+        return cleaned
 
     @field_validator("avatar_mime")
     @classmethod

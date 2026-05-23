@@ -4,7 +4,7 @@ from . import user_bp
 from flasgger import swag_from
 
 from .service import UserService
-from backend.app.image_utils import file_storage_to_base64, ImageError
+from backend.app.r2_storage import upload_avatar
 
 
 def _parse_user_payload() -> tuple[dict | None, dict | None]:
@@ -18,14 +18,20 @@ def _parse_user_payload() -> tuple[dict | None, dict | None]:
         file = request.files.get("avatar")
         if file is not None and getattr(file, "filename", ""):
             try:
-                b64, mime = file_storage_to_base64(file)
-            except ImageError as ex:
+                url = upload_avatar(file)
+                data["avatar_url"] = url
+                data["avatar_base64"] = None
+                data["avatar_mime"] = None
+            except ValueError as ex:
                 return None, {
                     "ok": False,
                     "errors": [{"field": "avatar", "message": str(ex)}],
                 }
-            data["avatar_base64"] = b64
-            data["avatar_mime"]   = mime
+            except Exception as ex:
+                return None, {
+                    "ok": False,
+                    "errors": [{"field": "avatar", "message": f"Error al subir avatar a R2: {str(ex)}"}],
+                }
         return data, None
 
     return request.get_json(silent=True), None
@@ -118,4 +124,26 @@ def toggle_follow(target_user_id: str):
             return js(result), 404
         return js(result), 400
 
+    return js(result), 200
+
+@user_bp.route('/recommendations', methods=['GET'])
+@jwt_required()
+def get_recommendations():
+    user_id = get_jwt_identity()
+    try:
+        limit = int(request.args.get("limit", 5))
+    except:
+        limit = 5
+    result = UserService.get_recommendations(user_id, limit=limit)
+    return js(result), 200
+
+@user_bp.route('/status', methods=['POST'])
+@jwt_required()
+def update_status():
+    user_id = get_jwt_identity()
+    data = request.get_json(silent=True) or {}
+    status = data.get("status", "online")
+    result = UserService.update_status(user_id, status)
+    if not result["ok"]:
+        return js(result), 400
     return js(result), 200

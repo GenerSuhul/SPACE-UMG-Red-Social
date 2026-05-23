@@ -95,6 +95,19 @@ export class UsersService {
     return this.http.post<FollowToggleResponse>(url, {});
   }
 
+  /** Fetch friend recommendations based on mutual friends. */
+  getRecommendations(limit = 5): Observable<any> {
+    const url = `${this.configService.appConfig.apiUrl}/api/users/recommendations`;
+    const params = { limit: String(limit) };
+    return this.http.get<any>(url, { params });
+  }
+
+  /** Update online status (online / offline). */
+  updateOnlineStatus(status: 'online' | 'offline'): Observable<any> {
+    const url = `${this.configService.appConfig.apiUrl}/api/users/status`;
+    return this.http.post<any>(url, { status });
+  }
+
   /** Imperatively push a user update (e.g. after local edits). */
   setCurrentUser(user: UserInterface): void {
     this.currentUserSubject.next(user);

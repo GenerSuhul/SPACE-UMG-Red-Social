@@ -32,6 +32,30 @@ export class PostsService {
     return this.http.get<ListPostsResponse>(`${this.baseUrl}/`, { params });
   }
 
+  listReels(page: number = 1, pageSize: number = 20): Observable<ListPostsResponse> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('page_size', pageSize.toString())
+      .set('type', 'reel');
+    return this.http.get<ListPostsResponse>(`${this.baseUrl}/`, { params });
+  }
+
+  listStories(page: number = 1, pageSize: number = 20): Observable<ListPostsResponse> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('page_size', pageSize.toString())
+      .set('type', 'story');
+    return this.http.get<ListPostsResponse>(`${this.baseUrl}/`, { params });
+  }
+
+  createReel(content: string, videoUrl: string): Observable<CreatePostResponse> {
+    const fd = new FormData();
+    fd.append('content', content);
+    fd.append('type', 'reel');
+    fd.append('media_urls', videoUrl);
+    return this.http.post<CreatePostResponse>(`${this.baseUrl}/`, fd);
+  }
+
   getMyPosts(page: number = 1, pageSize: number = 20): Observable<ListPostsResponse> {
     const params = new HttpParams()
       .set('page', page.toString())
@@ -50,16 +74,30 @@ export class PostsService {
     return this.http.get<GetPostResponse>(`${this.baseUrl}/${postId}`);
   }
 
-  createPost(content: string, files: File[] = []): Observable<CreatePostResponse> {
+  createPost(content: string, files: File[] = [], mediaUrls: string[] = [], type: string = 'post'): Observable<CreatePostResponse> {
+    if (mediaUrls && mediaUrls.length > 0) {
+      return this.http.post<CreatePostResponse>(`${this.baseUrl}/`, {
+        content,
+        type,
+        media_urls: mediaUrls
+      });
+    }
     const fd = new FormData();
     fd.append('content', content);
+    fd.append('type', type);
     files.forEach(f => fd.append('images', f));
     return this.http.post<CreatePostResponse>(`${this.baseUrl}/`, fd);
   }
 
-  updatePost(postId: string, content?: string, files?: File[], clearImages = false): Observable<UpdatePostResponse> {
+  updatePost(postId: string, content?: string, files?: File[], clearImages = false, mediaUrls?: string[]): Observable<UpdatePostResponse> {
     if (clearImages) {
       const body: Record<string, unknown> = { images: [] };
+      if (content !== undefined) body['content'] = content;
+      if (mediaUrls !== undefined) body['media_urls'] = mediaUrls;
+      return this.http.patch<UpdatePostResponse>(`${this.baseUrl}/${postId}`, body);
+    }
+    if (mediaUrls !== undefined) {
+      const body: Record<string, unknown> = { media_urls: mediaUrls };
       if (content !== undefined) body['content'] = content;
       return this.http.patch<UpdatePostResponse>(`${this.baseUrl}/${postId}`, body);
     }
@@ -82,7 +120,13 @@ export class PostsService {
     return this.http.get<ListCommentsResponse>(`${this.baseUrl}/${postId}/comments`, { params });
   }
 
-  createComment(postId: string, content: string, parentCommentId?: string, image?: File): Observable<CreateCommentResponse> {
+  createComment(postId: string, content: string, parentCommentId?: string, image?: File, imageUrl?: string): Observable<CreateCommentResponse> {
+    if (imageUrl) {
+      const body: Record<string, unknown> = { content };
+      if (parentCommentId) body['parent_comment_id'] = parentCommentId;
+      body['image_url'] = imageUrl;
+      return this.http.post<CreateCommentResponse>(`${this.baseUrl}/${postId}/comments`, body);
+    }
     const fd = new FormData();
     fd.append('content', content);
     if (parentCommentId) {
@@ -93,6 +137,7 @@ export class PostsService {
     }
     return this.http.post<CreateCommentResponse>(`${this.baseUrl}/${postId}/comments`, fd);
   }
+
 
   listReplies(postId: string, commentId: string, page: number = 1, pageSize: number = 50): Observable<ListRepliesResponse> {
     const params = new HttpParams()

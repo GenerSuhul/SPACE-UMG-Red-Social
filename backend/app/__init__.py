@@ -49,6 +49,11 @@ def _init_extensions(app: Flask) -> None:
     jwt.init_app(app)
     swagger.init_app(app)
 
+    # Inicializar esquemas e índices en MongoDB dentro del contexto de Flask
+    with app.app_context():
+        from .db_setup import setup_database
+        setup_database(mongo.db)
+
     cors.init_app(app, resources={
         r"/*": {
             "origins": app.config.get("CORS_ORIGINS", ["*",]),
@@ -82,7 +87,15 @@ def _register_blueprints(app: Flask) -> None:
     from .api.auth import auth_bp
     from .api.users import user_bp
     from .api.posts import posts_bp
+    from .api.notifications import notifications_bp
+    from .api.chats import chats_bp
+    from .api.lives import lives_bp
+    from .api.upload_routes import upload_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(user_bp, url_prefix="/api/users")
     app.register_blueprint(posts_bp, url_prefix="/api/posts")
+    app.register_blueprint(notifications_bp, url_prefix="/api/notifications")
+    app.register_blueprint(chats_bp, url_prefix="/api/chats")
+    app.register_blueprint(lives_bp, url_prefix="/api/lives")
+    app.register_blueprint(upload_bp, url_prefix="/api/upload")

@@ -37,10 +37,12 @@ def _fetch_usernames(docs: list[dict], id_field: str = "author_id") -> dict:
 
 def _author_fields(profiles: dict, author_id: str) -> dict:
     profile = profiles.get(str(author_id)) or {}
+    avatar_url = profile.get("avatar_url")
     return {
         "author_username":      profile.get("username"),
-        "author_avatar_base64": profile.get("avatar_base64"),
+        "author_avatar_base64": None if avatar_url else profile.get("avatar_base64"),
         "author_avatar_mime":   profile.get("avatar_mime"),
+        "author_avatar_url":    avatar_url,
     }
 
 
@@ -62,6 +64,7 @@ def _serialize_post(post: dict, profiles: dict | None = None) -> dict:
         "author_username":      author["author_username"],
         "author_avatar_base64": author["author_avatar_base64"],
         "author_avatar_mime":   author["author_avatar_mime"],
+        "author_avatar_url":    author["author_avatar_url"],
         "content":              post.get("content", ""),
         "media_urls":           post.get("media_urls", []),
         "images":               _post_images(post),
@@ -69,6 +72,7 @@ def _serialize_post(post: dict, profiles: dict | None = None) -> dict:
         "updated_at":           _iso(post.get("updated_at")),
         "reactions_count":      post.get("reactions_count", empty_reactions_count()),
         "comments_count":       post.get("comments_count", 0),
+        "type":                 post.get("type", "post"),
     }
 
 
@@ -82,6 +86,7 @@ def _serialize_comment(comment: dict, profiles: dict | None = None) -> dict:
         "author_username":      author["author_username"],
         "author_avatar_base64": author["author_avatar_base64"],
         "author_avatar_mime":   author["author_avatar_mime"],
+        "author_avatar_url":    author["author_avatar_url"],
         "content":              comment.get("content", ""),
         "parent_comment_id":    (
             str(comment["parent_comment_id"])
@@ -89,6 +94,7 @@ def _serialize_comment(comment: dict, profiles: dict | None = None) -> dict:
         ),
         "image_base64":         comment.get("image_base64"),
         "image_mime":           comment.get("image_mime"),
+        "image_url":            comment.get("image_url"),
         "created_at":           _iso(comment.get("created_at")),
         "reactions_count":      comment.get("reactions_count", empty_reactions_count()),
     }
@@ -171,6 +177,7 @@ class PostService:
             "images":          images,
             "reactions_count": empty_reactions_count(),
             "comments_count":  0,
+            "type":            validated.type or "post",
             "created_at":      datetime.now(timezone.utc),
             "updated_at":      None,
         }
@@ -180,17 +187,47 @@ class PostService:
             return {"ok": False, "errors": [{"field": "database", "message": "Error guardando el post"}]}
 
         post_doc["_id"] = ObjectId(post_id)
+        
+        try:
+            from backend.app.api.notifications.service import NotificationService
+            if validated.content.startswith("🔄 Repost @"):
+                parts = validated.content.split(":", 1)
+                if len(parts) > 0:
+                    header = parts[0]
+                    username = header.replace("🔄 Repost @", "").strip()
+                    original_author = UserRepository.find_by_username(username.lower())
+                    if original_author:
+                        NotificationService.trigger_share(
+                            sender_id=author_id,
+                            receiver_id=str(original_author["_id"]),
+                            post_id=str(post_id)
+                        )
+            
+            NotificationService.trigger_mentions(
+                sender_id=author_id,
+                text=validated.content,
+                post_id=str(post_id)
+            )
+        except Exception as ex:
+            print(f"Error triggering repost or mention notifications: {ex}")
+
         profiles = UserRepository.find_many_usernames([author_id])
         return {"ok": True, "post": _serialize_post(post_doc, profiles)}
 
     @staticmethod
-    def list_posts(page: int = 1, page_size: int = 20) -> dict:
+    def list_posts(page: int = 1, page_size: int = 20, post_type: str | None = None) -> dict:
         page = max(1, page)
         page_size = max(1, min(100, page_size))
         skip = (page - 1) * page_size
 
-        posts = PostRepository.list_posts(skip=skip, limit=page_size)
-        total = PostRepository.count_posts()
+        q = {}
+        if post_type:
+            q["type"] = post_type
+        else:
+            q["type"] = {"$in": ["post", None]}
+
+        posts = PostRepository.list_posts(skip=skip, limit=page_size, query_filter=q)
+        total = PostRepository.count_posts(query_filter=q)
         profiles = _fetch_usernames(posts)
 
         return {
@@ -365,6 +402,7 @@ class CommentService:
             "parent_comment_id": parent_oid,
             "image_base64":      image_b64,
             "image_mime":        image_mime,
+            "image_url":         validated.image_url,
             "reactions_count":   empty_reactions_count(),
             "created_at":        datetime.now(timezone.utc),
         }
@@ -374,6 +412,23 @@ class CommentService:
             return {"ok": False, "errors": [{"field": "database", "message": "Error guardando el comentario"}]}
 
         PostRepository.increment_comments(post_id, 1)
+
+        try:
+            from backend.app.api.notifications.service import NotificationService
+            post_owner_id = str(post["author_id"])
+            NotificationService.trigger_comment(
+                sender_id=author_id,
+                receiver_id=post_owner_id,
+                post_id=post_id,
+                comment_text=validated.content
+            )
+            NotificationService.trigger_mentions(
+                sender_id=author_id,
+                text=validated.content,
+                post_id=post_id
+            )
+        except Exception as ex:
+            print(f"Error triggering comment or mention notifications: {ex}")
 
         comment_doc["_id"] = ObjectId(comment_id)
         profiles = UserRepository.find_many_usernames([author_id])
@@ -548,6 +603,21 @@ class ReactionService:
                 return {"ok": False, "errors": [{"field": "database", "message": "Error guardando la reacción"}]}
             ReactionService._increment_target(target_id, target_type, new_reaction, 1)
             reaction_doc["_id"] = ObjectId(reaction_id)
+            
+            if target_type == "post":
+                try:
+                    post = PostRepository.find_by_id(target_id)
+                    if post:
+                        post_owner_id = str(post["author_id"])
+                        from backend.app.api.notifications.service import NotificationService
+                        NotificationService.trigger_like(
+                            sender_id=user_id,
+                            receiver_id=post_owner_id,
+                            post_id=target_id
+                        )
+                except Exception as ex:
+                    print(f"Error triggering reaction/like notification: {ex}")
+                    
             return {"ok": True, "reaction": _serialize_reaction(reaction_doc), "action": "created"}
 
         if existing["reaction_type"] == new_reaction:

@@ -28,21 +28,13 @@ class BaseConfig:
     DEBUG: bool = False
     TESTING: bool = False
 
-    # Cota superior del body — necesario para multipart/form-data con imágenes
-    # y para JSON que incluya `image_base64` (Base64 inflado ~33%).
-    # Con MAX_IMAGE_BYTES = 5 MB el peor caso por JSON ronda los 7 MB; 12 MB
-    # deja margen para los campos de texto y headers.
-    MAX_CONTENT_LENGTH: int = 12 * 1024 * 1024
-
-    # @classmethod
-    # def vermongo(cls):
-    #     print(f"MONGO_URI: {cls.MONGO_URI}")
-    #     return cls.MONGO_URI
+    # Cota superior del body — aumentado para permitir reels de hasta 100MB
+    MAX_CONTENT_LENGTH: int = 110 * 1024 * 1024
 
 @dataclass
 class DevelopmentConfig(BaseConfig):
     DEBUG: bool         = True
-    CORS_ORIGINS: list  = field(default_factory=lambda: ["http://localhost:4200"])
+    CORS_ORIGINS: list  = field(default_factory=lambda: ["http://localhost:4200", "https://space.umg.kyrosoftgs.com"])
 
 @dataclass
 class ProductionConfig(BaseConfig):
@@ -50,7 +42,7 @@ class ProductionConfig(BaseConfig):
     # En producción se asume que MONGO_URI viene del entorno (Atlas).
     CORS_ORIGINS: list  = field(default_factory=lambda: [
         origin.strip()
-        for origin in os.getenv("CORS_WHITE_LIST", "").split(",")
+        for origin in os.getenv("CORS_WHITE_LIST", "http://localhost:4200,https://space.umg.kyrosoftgs.com").split(",")
         if origin.strip()
     ])
 
@@ -58,7 +50,7 @@ class ProductionConfig(BaseConfig):
 class TestingConfig(BaseConfig):
     TESTING: bool       = True
     MONGO_URI: str      = "mongodb://localhost:27017/test_db"
-    CORS_ORIGINS: list  = field(default_factory=lambda: ["http://localhost:4200"])
+    CORS_ORIGINS: list  = field(default_factory=lambda: ["http://localhost:4200", "https://space.umg.kyrosoftgs.com"])
 
 config_by_name: dict[str, object] = {
     "development": DevelopmentConfig(),

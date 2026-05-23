@@ -1,0 +1,201 @@
+<div class="chats-container fade-in">
+  <div class="glass-panel chats-layout">
+    
+    <!-- Left Panel: Chat List -->
+    <div class="chats-sidebar">
+      <div class="sidebar-header">
+        <h2>Mensajes</h2>
+        <span class="brand-sub">SPACE UMG</span>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="sidebar-tabs">
+        <button class="tab-btn" [class.active]="selectedTab() === 'chats'" (click)="selectedTab.set('chats')">
+          <mat-icon>chat</mat-icon> Chats
+        </button>
+        <button class="tab-btn" [class.active]="selectedTab() === 'contacts'" (click)="selectedTab.set('contacts')">
+          <mat-icon>people</mat-icon> Amigos
+        </button>
+      </div>
+      
+      <div class="chats-list">
+        @if (selectedTab() === 'chats') {
+          @if (chats.length === 0) {
+            <div class="empty-chats">
+              <mat-icon>chat_bubble_outline</mat-icon>
+              <p>No tienes chats activos.</p>
+              <span class="hint">Busca usuarios en el buscador superior o inicia un chat desde Amigos.</span>
+            </div>
+          } @else {
+            @for (chat of chats; track chat.id) {
+              <div class="chat-item" 
+                   [class.active]="activeChat?.id === chat.id" 
+                   (click)="selectChat(chat)">
+                <div class="avatar-container">
+                  @if (chat.other_participant?.avatar_url || chat.other_participant?.avatar_base64) {
+                    <img [src]="getAvatarSrc(chat.other_participant)" alt="Avatar" class="avatar-img">
+                  } @else {
+                    <div class="avatar-placeholder">
+                      {{ chat.other_participant?.username?.charAt(0)?.toUpperCase() }}
+                    </div>
+                  }
+                  <span class="status-dot" [class.online]="chat.other_participant?.online_status === 'online'" [class.offline]="chat.other_participant?.online_status !== 'online'"></span>
+                </div>
+                <div class="chat-details">
+                  <div class="chat-row">
+                    <span class="chat-name">{{ chat.other_participant?.first_name }} {{ chat.other_participant?.last_name }}</span>
+                    <span class="chat-time">{{ chat.updated_at | date:'shortTime' }}</span>
+                  </div>
+                  <div class="chat-row">
+                    <span class="chat-preview" [class.unread]="chat.last_message && !chat.last_message.is_read && chat.last_message.sender_id !== myId">
+                      @if (chat.last_message?.sender_id === myId) {
+                        Tú: 
+                      }
+                      {{ chat.last_message?.content || 'Iniciaste un chat' }}
+                    </span>
+                    @if (chat.last_message && !chat.last_message.is_read && chat.last_message.sender_id !== myId) {
+                      <span class="unread-badge"></span>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          }
+        } @else {
+          <!-- Contacts / Friends Tab View -->
+          @if (loadingContacts()) {
+            <div class="contacts-loading">
+              <mat-spinner diameter="28"></mat-spinner>
+              <span>Cargando amigos...</span>
+            </div>
+          } @else if (contacts.length === 0) {
+            <div class="empty-chats">
+              <mat-icon>people_outline</mat-icon>
+              <p>Aún no tienes amigos agregados.</p>
+              <span class="hint">Sigue a otros estudiantes de SPACE UMG para comenzar a conversar.</span>
+            </div>
+          } @else {
+            @for (user of contacts; track user.id) {
+              <div class="chat-item contact-item" (click)="startChatWith(user.id)">
+                <div class="avatar-container">
+                  @if (user.avatar_url || user.avatar_base64) {
+                    <img [src]="getAvatarSrc(user)" alt="Avatar" class="avatar-img">
+                  } @else {
+                    <div class="avatar-placeholder">
+                      {{ user.username.charAt(0).toUpperCase() }}
+                    </div>
+                  }
+                </div>
+                <div class="chat-details">
+                  <div class="chat-row">
+                    <span class="chat-name">{{ user.first_name }} {{ user.last_name }}</span>
+                  </div>
+                  <div class="chat-row">
+                    <span class="chat-preview">@{{ user.username }} · Iniciar chat</span>
+                  </div>
+                </div>
+              </div>
+            }
+          }
+        }
+      </div>
+    </div>
+
+    <!-- Right Panel: Active Chat Room -->
+    <div class="chats-room">
+      @if (!activeChat) {
+        <div class="no-active-chat">
+          <div class="no-chat-illustration">
+            <mat-icon class="pulse-icon">forum</mat-icon>
+          </div>
+          <h3>Selecciona una conversación</h3>
+          <p>Envía mensajes y comparte ideas con tus compañeros en SPACE UMG.</p>
+        </div>
+      } @else {
+        <!-- Chat Header -->
+        <div class="chat-header">
+          <div class="active-user-info">
+            <div class="avatar-container">
+              @if (activeChat.other_participant?.avatar_url || activeChat.other_participant?.avatar_base64) {
+                <img [src]="getAvatarSrc(activeChat.other_participant)" alt="Avatar" class="avatar-img">
+              } @else {
+                <div class="avatar-placeholder">
+                  {{ activeChat.other_participant?.username?.charAt(0)?.toUpperCase() }}
+                </div>
+              }
+              <span class="status-dot" [class.online]="activeChat.other_participant?.online_status === 'online'" [class.offline]="activeChat.other_participant?.online_status !== 'online'"></span>
+            </div>
+            <div class="user-text">
+              <span class="active-name">{{ activeChat.other_participant?.first_name }} {{ activeChat.other_participant?.last_name }}</span>
+              <span class="active-status">
+                @if (activeChat.other_participant?.online_status === 'online') {
+                  En línea
+                } @else {
+                  Desconectado
+                }
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat History -->
+        <div class="chat-history">
+          @if (messages.length === 0) {
+            <div class="empty-history">
+              <p>Di hola 👋 ¡Comienza una conversación con {{ activeChat.other_participant?.first_name }}!</p>
+            </div>
+          } @else {
+            @for (msg of messages; track msg.id) {
+              <div class="message-bubble-wrapper" [class.outgoing]="msg.sender_id === myId">
+                <div class="message-bubble" [class.outgoing]="msg.sender_id === myId">
+                  @if (msg.content) {
+                    <p class="msg-content">{{ msg.content }}</p>
+                  }
+                  @if (msg.media_url) {
+                    <div class="chat-media-container">
+                      @if (msg.media_type === 'image') {
+                        <img [src]="msg.media_url" class="chat-media-img" alt="Attached media">
+                      } @else if (msg.media_type === 'video') {
+                        <video [src]="msg.media_url" controls class="chat-media-video"></video>
+                      }
+                    </div>
+                  }
+                  <div class="msg-meta">
+                    <span class="msg-time">{{ msg.created_at | date:'shortTime' }}</span>
+                    @if (msg.sender_id === myId) {
+                      <mat-icon class="status-icon" [class.read]="msg.is_read">done_all</mat-icon>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          }
+        </div>
+
+        <!-- Chat Input -->
+        @if (uploadingMedia) {
+          <div class="chat-upload-indicator">
+            <span>Subiendo archivo a R2 ({{ uploadProgress }}%)...</span>
+            <mat-progress-bar mode="determinate" [value]="uploadProgress"></mat-progress-bar>
+          </div>
+        }
+        <div class="chat-input-area">
+          <button mat-icon-button (click)="fileInput.click()" class="attach-btn" [disabled]="uploadingMedia">
+            <mat-icon>attach_file</mat-icon>
+          </button>
+          <input type="file" #fileInput (change)="onFileSelected($event)" style="display: none;" accept="image/*,video/*">
+          <input type="text" 
+                 [formControl]="messageControl" 
+                 placeholder="Escribe un mensaje..." 
+                 (keydown.enter)="sendMessage()"
+                 class="msg-input"
+                 [disabled]="uploadingMedia">
+          <button mat-icon-button (click)="sendMessage()" class="send-btn" [disabled]="!messageControl.value.trim() && !uploadingMedia">
+            <mat-icon>send</mat-icon>
+          </button>
+        </div>
+      }
+    </div>
+
+  </div>
+</div>

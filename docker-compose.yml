@@ -8,12 +8,12 @@ services:
     env_file:
       - .env
     environment:
-      # Estos son tus datos de acceso iniciales
       MONGO_INITDB_ROOT_USERNAME: $MONGO_DB_USERNAME
       MONGO_INITDB_ROOT_PASSWORD: $MONGO_DB_PASSWORD
     volumes:
-      # Esto sirve para que no pierdas tus datos al apagar el contenedor
       - mongo_red_social:/data/db
+    networks:
+      - space-network
 
   mongodb-express-red-social:
     image: mongo-express:latest
@@ -26,12 +26,55 @@ services:
       ME_CONFIG_MONGODB_ADMINUSERNAME: $MONGO_DB_USERNAME
       ME_CONFIG_MONGODB_ADMINPASSWORD: $MONGO_DB_PASSWORD
       ME_CONFIG_MONGODB_SERVER: mongodb-red-social
-
-      # no admin
       ME_CONFIG_BASICAUTH_USERNAME: $MONGO_DB_USERNAME
       ME_CONFIG_BASICAUTH_PASSWORD: $MONGO_DB_PASSWORD
     depends_on:
       - mongodb-red-social
+    networks:
+      - space-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: space-backend
+    ports:
+      - "8800:8800"
+    env_file:
+      - .env
+    environment:
+      - MONGO_URI=${MONGO_URI:-mongodb://$MONGO_DB_USERNAME:$MONGO_DB_PASSWORD@mongodb-red-social:27017/mongo_red_social?authSource=admin}
+    depends_on:
+      - mongodb-red-social
+    networks:
+      - space-network
+
+  websocket:
+    build:
+      context: .
+      dockerfile: Dockerfile.websocket
+    container_name: space-websocket
+    ports:
+      - "8888:8888"
+    networks:
+      - space-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: space-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+      - websocket
+    networks:
+      - space-network
 
 volumes:
   mongo_red_social:
+
+networks:
+  space-network:
+    driver: bridge

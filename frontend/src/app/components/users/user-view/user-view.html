@@ -1,9 +1,9 @@
-<div class="page-wrapper">
+<div class="page-wrapper fade-in">
 
   <!-- Estado de carga del perfil -->
   <div *ngIf="loading()" class="state-center">
     <mat-spinner diameter="48"></mat-spinner>
-    <p>Cargando perfil...</p>
+    <p>Conectando al universo de tu compañero...</p>
   </div>
 
   <!-- Usuario no encontrado -->
@@ -12,103 +12,254 @@
     <p class="not-found-text">Usuario no encontrado.</p>
   </div>
 
-  <!-- Layout de dos columnas -->
-  <div *ngIf="!loading() && !notFound() && user()" class="page-layout">
-
-    <!-- Columna izquierda: publicaciones -->
-    <div class="posts-column">
-      <h3 class="section-title">Publicaciones de @{{ user()?.username }}</h3>
-
-      <div *ngIf="postsLoading()" class="posts-loading">
-        <mat-spinner diameter="32"></mat-spinner>
-        <span>Cargando publicaciones...</span>
-      </div>
-
-      <p *ngIf="!postsLoading() && posts().length === 0" class="no-posts">
-        Este usuario aún no tiene publicaciones.
-      </p>
-
-      <app-post-item
-        *ngFor="let post of posts(); trackBy: trackByPostId"
-        [post]="post"
-        (postDeleted)="onPostDeleted($event)">
-      </app-post-item>
+  <div *ngIf="!loading() && !notFound() && user()" class="profile-container glass-panel">
+    <!-- Header: Cover Banner + Avatar flotante + Stats -->
+    <div class="profile-cover-banner" [style.backgroundImage]="coverSrc ? 'url(' + coverSrc + ')' : ''">
+      <!-- Edit Cover Button: ONLY visible if this is MY profile -->
+      @if (isMe()) {
+        <button mat-flat-button class="edit-cover-btn" (click)="coverInput.click()" [disabled]="uploadingCover()">
+          <mat-icon>photo_camera</mat-icon>
+          <span>{{ uploadingCover() ? 'Subiendo...' : 'Actualizar Portada' }}</span>
+        </button>
+        <input type="file" #coverInput (change)="onCoverSelected($event)" accept="image/*" style="display: none;">
+      }
     </div>
 
-    <!-- Columna derecha: perfil del usuario -->
-    <div class="profile-column">
-      <mat-card class="profile-card">
+    <div class="profile-header-content">
+      <div class="avatar-and-actions">
+        <!-- Floating Avatar -->
+        <div class="avatar-wrapper">
+          <img
+            *ngIf="avatarSrc"
+            [src]="avatarSrc"
+            alt="Foto de perfil"
+            class="avatar-img"
+          />
+          <mat-icon *ngIf="!avatarSrc" class="avatar-icon">account_circle</mat-icon>
+        </div>
 
-        <!-- Header -->
-        <div class="profile-header">
-          <div class="avatar-wrapper">
-            <img
-              *ngIf="avatarSrc"
-              [src]="avatarSrc"
-              alt="Foto de perfil"
-              class="avatar-img"
-            />
-            <mat-icon *ngIf="!avatarSrc" class="avatar-icon">account_circle</mat-icon>
-          </div>
-
-          <div class="name-follow-row">
-            <h2 class="full-name">{{ user()?.first_name }} {{ user()?.last_name }}</h2>
+        <!-- Action buttons -->
+        <div class="profile-actions">
+          @if (!isMe()) {
+            <!-- Follow button -->
             <button
-              mat-stroked-button
-              class="follow-btn"
+              mat-raised-button
+              color="primary"
+              class="btn-primary"
               [class.following]="isFollowing()"
               [disabled]="followLoading()"
               (click)="onToggleFollow()"
               [matTooltip]="isFollowing() ? 'Dejar de seguir' : 'Seguir'"
             >
-              <mat-spinner *ngIf="followLoading()" diameter="18" class="btn-spinner"></mat-spinner>
+              <mat-spinner *ngIf="followLoading()" diameter="18" class="inline-spinner"></mat-spinner>
               <ng-container *ngIf="!followLoading()">
                 <mat-icon>{{ isFollowing() ? 'person_remove' : 'person_add' }}</mat-icon>
-                {{ isFollowing() ? 'Siguiendo' : 'Seguir' }}
+                <span>{{ isFollowing() ? 'Siguiendo' : 'Seguir' }}</span>
               </ng-container>
             </button>
-          </div>
 
-          <p class="username">@{{ user()?.username }}</p>
+            <!-- Enviar Mensaje button -->
+            <button mat-stroked-button class="btn-secondary" (click)="onStartChat()" matTooltip="Enviar mensaje directo">
+              <mat-icon>chat</mat-icon>
+              <span>Mensaje Directo</span>
+            </button>
+          } @else {
+            <!-- Logout Button for my own profile (Mobile UX) -->
+            <button
+              mat-raised-button
+              color="warn"
+              class="btn-logout"
+              (click)="logout()"
+              matTooltip="Cerrar sesión de mi cuenta"
+            >
+              <mat-icon>logout</mat-icon>
+              <span>Cerrar sesión</span>
+            </button>
+          }
+        </div>
+      </div>
 
-          <p class="followers-count">
-            <span>{{ followersCount() }} {{ followersCount() === 1 ? 'seguidor' : 'seguidores' }}</span>
-          </p>
+      <!-- User Text Info -->
+      <div class="profile-info-block">
+        <div class="name-badge-row">
+          <h2 class="full-name">{{ user()?.first_name }} {{ user()?.last_name }}</h2>
+          <mat-icon class="verified-badge" matTooltip="Estudiante Verificado UMG">verified</mat-icon>
+        </div>
+        <p class="username">@{{ user()?.username }}</p>
+        
+        <!-- Career & University Tag -->
+        <div class="career-tag">
+          <mat-icon>school</mat-icon>
+          <span>Estudiante de Facultad - UMG</span>
         </div>
 
-        <mat-card-content class="card-content">
-          <div class="profile-fields">
+        <!-- Stats Counter Section -->
+        <div class="stats-counter-row">
+          <div class="stat-item" (click)="viewMode.set('feed')">
+            <span class="stat-number">{{ posts().length }}</span>
+            <span class="stat-label">Publicaciones</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number">{{ followersCount() }}</span>
+            <span class="stat-label">Seguidores</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number">{{ user()?.following_count ?? 0 }}</span>
+            <span class="stat-label">Siguiendo</span>
+          </div>
+        </div>
+      </div>
+    </div>
 
-            <div class="field-row">
-              <mat-icon>person</mat-icon>
-              <div class="field-info">
-                <span class="field-label">Nombre de usuario</span>
-                <span class="field-value">{{ user()?.username }}</span>
+    <!-- Instagram-Style Visual Tab Selector -->
+    <div class="profile-tabs-selector">
+      <button 
+        class="tab-selector-btn" 
+        [class.active]="viewMode() === 'grid'"
+        (click)="viewMode.set('grid')"
+      >
+        <mat-icon>grid_on</mat-icon>
+        <span>CUADRÍCULA</span>
+      </button>
+      <button 
+        class="tab-selector-btn" 
+        [class.active]="viewMode() === 'feed'"
+        (click)="viewMode.set('feed')"
+      >
+        <mat-icon>view_stream</mat-icon>
+        <span>PUBLICACIONES</span>
+      </button>
+      <button 
+        class="tab-selector-btn" 
+        [class.active]="viewMode() === 'info'"
+        (click)="viewMode.set('info')"
+      >
+        <mat-icon>badge</mat-icon>
+        <span>INFORMACIÓN</span>
+      </button>
+    </div>
+
+    <!-- Tab Contents -->
+    <div class="profile-tab-content">
+      
+      <!-- 1. GRID VIEW (INSTAGRAM STYLE) -->
+      <div *ngIf="viewMode() === 'grid'" class="tab-pane-grid">
+        <div *ngIf="postsLoading()" class="loading-container">
+          <mat-spinner diameter="32"></mat-spinner>
+          <span>Cargando galería...</span>
+        </div>
+        
+        <p *ngIf="!postsLoading() && posts().length === 0" class="no-content-state">
+          Este usuario aún no tiene publicaciones con fotos en la cuadrícula.
+        </p>
+
+        <div *ngIf="!postsLoading() && posts().length > 0" class="instagram-post-grid">
+          <div 
+            *ngFor="let post of posts()" 
+            class="grid-post-cell"
+            (click)="selectGridPost(post.id)"
+          >
+            <!-- Cell Image -->
+            <img 
+              *ngIf="post.media_urls && post.media_urls.length > 0" 
+              [src]="post.media_urls[0]" 
+              class="grid-post-img"
+              alt="Publicación"
+            />
+            <img 
+              *ngIf="(!post.media_urls || post.media_urls.length === 0) && (post.images && post.images.length > 0)" 
+              [src]="'data:' + post.images[0].mime + ';base64,' + post.images[0].base64" 
+              class="grid-post-img"
+              alt="Publicación"
+            />
+            
+            <!-- Fallback text gradient for post without image -->
+            <div *ngIf="(!post.media_urls || post.media_urls.length === 0) && (!post.images || post.images.length === 0)" class="grid-post-text-fallback">
+              <p class="fallback-text-content">{{ post.content | slice:0:80 }}{{ post.content.length > 80 ? '...' : '' }}</p>
+              <mat-icon class="text-fallback-icon">notes</mat-icon>
+            </div>
+
+            <!-- Hover overlay -->
+            <div class="grid-post-overlay">
+              <div class="overlay-stat">
+                <mat-icon>favorite</mat-icon>
+                <span>{{ getTotalReactions(post) }}</span>
+              </div>
+              <div class="overlay-stat">
+                <mat-icon>comment</mat-icon>
+                <span>{{ post.comments_count }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. TRADITIONAL LINEAR FEED VIEW -->
+      <div *ngIf="viewMode() === 'feed'" class="tab-pane-feed">
+        <div *ngIf="postsLoading()" class="loading-container">
+          <mat-spinner diameter="32"></mat-spinner>
+          <span>Cargando publicaciones...</span>
+        </div>
+
+        <p *ngIf="!postsLoading() && posts().length === 0" class="no-content-state">
+          Este usuario aún no tiene publicaciones en su feed.
+        </p>
+
+        <div *ngIf="!postsLoading() && posts().length > 0" class="feed-posts-list">
+          <app-post-item
+            *ngFor="let post of posts(); trackBy: trackByPostId"
+            [id]="'post-' + post.id"
+            [post]="post"
+            [interactive]="true"
+            (postDeleted)="onPostDeleted($event)"
+            (postUpdated)="onPostUpdated($event)"
+          ></app-post-item>
+        </div>
+      </div>
+
+      <!-- 3. DETAILED PROFILE INFORMATION VIEW -->
+      <div *ngIf="viewMode() === 'info'" class="tab-pane-info">
+        
+        <div class="info-details-card glass-panel fade-in">
+          <h3 class="info-section-title">Información del Estudiante</h3>
+          <div class="info-fields-grid">
+            <div class="info-field-card">
+              <mat-icon>account_box</mat-icon>
+              <div class="field-details">
+                <span class="field-title">Nombre de Usuario</span>
+                <span class="field-value">@{{ user()?.username }}</span>
               </div>
             </div>
 
-            <div class="field-row">
+            <div class="info-field-card">
               <mat-icon>badge</mat-icon>
-              <div class="field-info">
-                <span class="field-label">Nombre completo</span>
+              <div class="field-details">
+                <span class="field-title">Nombres y Apellidos</span>
                 <span class="field-value">{{ user()?.first_name }} {{ user()?.last_name }}</span>
               </div>
             </div>
 
-            <div class="field-row">
+            <div class="info-field-card">
               <mat-icon>cake</mat-icon>
-              <div class="field-info">
-                <span class="field-label">Edad</span>
+              <div class="field-details">
+                <span class="field-title">Edad del Alumno</span>
                 <span class="field-value">{{ user()?.age }} años</span>
               </div>
             </div>
 
+            <div class="info-field-card">
+              <mat-icon style="color: var(--success-color)">check_circle</mat-icon>
+              <div class="field-details">
+                <span class="field-title">Estatus de Cuenta</span>
+                <span class="field-value">Activa / Verificada</span>
+              </div>
+            </div>
           </div>
-        </mat-card-content>
+        </div>
 
-      </mat-card>
+      </div>
+
     </div>
-
   </div>
 
 </div>

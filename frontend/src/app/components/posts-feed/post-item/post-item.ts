@@ -13,6 +13,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { PostsService } from '../../../service/posts/posts';
 import { TokenService } from '../../../service/auth/token';
+import { UploadService } from '../../../service/upload';
 import { Post, Comment, ReactionType, ReactionsCount } from '../../../models/posts';
 
 /** All reaction types with their display emoji and label. */
@@ -54,11 +55,38 @@ interface ReplyState {
 })
 export class PostItem {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly uploadService = inject(UploadService);
 
   @Input({ required: true }) post!: Post;
   @Input() interactive = false;
   @Output() postDeleted = new EventEmitter<string>();
   @Output() postUpdated = new EventEmitter<Post>();
+
+  isImageUrl(url: string): boolean {
+    if (!url) return false;
+    if (this.isVideoUrl(url)) return false;
+    const cleanUrl = url.split('?')[0].toLowerCase();
+    return cleanUrl.endsWith('.jpg') || 
+           cleanUrl.endsWith('.jpeg') || 
+           cleanUrl.endsWith('.png') || 
+           cleanUrl.endsWith('.webp') || 
+           cleanUrl.endsWith('.gif') || 
+           cleanUrl.includes('/posts/') || 
+           cleanUrl.includes('/avatars/') || 
+           cleanUrl.includes('/chats/') || 
+           cleanUrl.includes('/story/') || 
+           cleanUrl.includes('/stories/');
+  }
+
+  isVideoUrl(url: string): boolean {
+    if (!url) return false;
+    const cleanUrl = url.split('?')[0].toLowerCase();
+    return cleanUrl.endsWith('.mp4') || 
+           cleanUrl.endsWith('.mov') || 
+           cleanUrl.endsWith('.webm') || 
+           cleanUrl.includes('/reels/') ||
+           cleanUrl.includes('/reel/');
+  }
 
   // Expansion state (post-level comments panel)
   expanded = signal(false);
@@ -281,22 +309,36 @@ export class PostItem {
     const parentId = this.replyingToId() ?? undefined;
     const image = this.selectedCommentImage() ?? undefined;
 
-    this.postsService.createComment(this.post.id, content, parentId, image)
+    if (image) {
+      this.uploadService.uploadFile(image, 'post').subscribe({
+        next: (event: any) => {
+          if (event.type === 4 && event.body && event.body.ok && event.body.url) {
+            this.createCommentWithUrl(content, parentId, event.body.url);
+          }
+        },
+        error: (err) => {
+          this.submittingComment.set(false);
+          this.snackBar.open('Error al subir imagen a R2: ' + (err.error?.errors?.[0]?.message || err.message), 'Cerrar', { duration: 5000 });
+        }
+      });
+    } else {
+      this.createCommentWithUrl(content, parentId);
+    }
+  }
+
+  private createCommentWithUrl(content: string, parentId?: string, imageUrl?: string): void {
+    this.postsService.createComment(this.post.id, content, parentId, undefined, imageUrl)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
           const newComment = res.comment;
 
           if (parentId) {
-            // It's a reply — append it to the parent's reply list so the user
-            // sees it immediately. If the parent's reply panel wasn't loaded yet,
-            // mark it as loaded so toggling won't re-fetch and clobber it.
             const state = this.getOrCreateReplyState(parentId);
             state.replies.update(current => [...current, newComment]);
             state.loaded.set(true);
             state.expanded.set(true);
           } else {
-            // Top-level comment — prepend to the main list.
             this.comments.update(current => [newComment, ...current]);
           }
 
@@ -307,9 +349,9 @@ export class PostItem {
           this.clearCommentImage();
           this.snackBar.open('Comentario agregado.', 'Cerrar', { duration: 2500 });
         },
-        error: () => {
+        error: (err) => {
           this.submittingComment.set(false);
-          this.snackBar.open('Error al agregar el comentario.', 'Cerrar', { duration: 3500 });
+          this.snackBar.open('Error al agregar el comentario: ' + (err.error?.errors?.[0]?.message || err.message), 'Cerrar', { duration: 3500 });
         },
       });
   }
@@ -390,6 +432,59 @@ export class PostItem {
           },
         });
     }
+  }
+
+  sharePost(): void {
+    const url = `${window.location.origin}/users/${this.post.author_id}#post-${this.post.id}`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => {
+        this.snackBar.open('¡Enlace de la publicación copiado al portapapeles!', 'Cerrar', { duration: 3000 });
+      }).catch(() => {
+        this.fallbackCopyText(url);
+      });
+    } else {
+      this.fallbackCopyText(url);
+    }
+  }
+
+  repostPost(): void {
+    const originalAuthor = this.post.author_username;
+    const originalContent = this.post.content;
+    const cleanContent = `🔄 Repost @${originalAuthor}: "${originalContent}"`;
+    const mediaUrls = this.post.media_urls || [];
+
+    this.postsService.createPost(cleanContent, [], mediaUrls)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.snackBar.open('¡Publicación republicada con éxito! Recarga el feed para verla.', 'Cerrar', { duration: 4000 });
+        },
+        error: (err) => {
+          this.snackBar.open('Error al republicar: ' + (err.error?.errors?.[0]?.message || err.message), 'Cerrar', { duration: 4000 });
+        }
+      });
+  }
+
+  fallbackCopyText(text: string): void {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.top = '0';
+    textArea.style.left = '0';
+    textArea.style.position = 'fixed';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      const successful = document.execCommand('copy');
+      if (successful) {
+        this.snackBar.open('¡Enlace de la publicación copiado al portapapeles!', 'Cerrar', { duration: 3000 });
+      } else {
+        this.snackBar.open('Error al copiar el enlace.', 'Cerrar', { duration: 3000 });
+      }
+    } catch (err) {
+      this.snackBar.open('Error al copiar el enlace.', 'Cerrar', { duration: 3000 });
+    }
+    document.body.removeChild(textArea);
   }
 
   // ---- Reactions on comments / replies ----

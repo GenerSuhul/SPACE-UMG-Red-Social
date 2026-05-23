@@ -79,8 +79,9 @@ def create_post():
 def list_posts():
     page = int(request.args.get("page", 1) or 1)
     page_size = int(request.args.get("page_size", 20) or 20)
+    post_type = request.args.get("type")
 
-    result = PostService.list_posts(page=page, page_size=page_size)
+    result = PostService.list_posts(page=page, page_size=page_size, post_type=post_type)
     return js(result), 200
 
 

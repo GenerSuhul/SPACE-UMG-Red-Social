@@ -20,6 +20,7 @@ import { MatBadgeModule } from '@angular/material/badge';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 const materialModules = [
   MatCardModule,
@@ -41,6 +42,7 @@ const materialModules = [
   MatMenuModule,
   MatAutocompleteModule,
   MatTabsModule,
+  MatProgressBarModule,
 ];
 
 @NgModule({

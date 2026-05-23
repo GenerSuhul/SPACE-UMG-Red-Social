@@ -1,8 +1,8 @@
-<mat-toolbar color="primary">
-  <button mat-icon-button aria-label="Home" (click)="goToFeed()">
-    <mat-icon>people</mat-icon>
-  </button>
-  <span class="app-title">Red Social</span>
+<mat-toolbar>
+  <div class="logo-container" (click)="goToFeed()">
+    <mat-icon class="logo-icon">rocket_launch</mat-icon>
+    <span class="app-title">SPACE <span class="accent-title">UMG</span></span>
+  </div>
 
   <!-- ── Search ── -->
   <div class="search-wrapper" #searchWrapper>
@@ -42,13 +42,13 @@
         [attr.aria-label]="user.username"
       >
         <img
-          *ngIf="user.avatar_base64"
-          [src]="'data:' + user.avatar_mime + ';base64,' + user.avatar_base64"
+          *ngIf="user.avatar_url || user.avatar_base64"
+          [src]="user.avatar_url || 'data:' + user.avatar_mime + ';base64,' + user.avatar_base64"
           class="result-avatar"
           alt=""
           aria-hidden="true"
         />
-        <mat-icon *ngIf="!user.avatar_base64" class="result-avatar-icon">account_circle</mat-icon>
+        <mat-icon *ngIf="!user.avatar_url && !user.avatar_base64" class="result-avatar-icon">account_circle</mat-icon>
         <div class="result-text">
           <span class="result-username">{{ user.username }}</span>
           <span class="result-name">{{ user.first_name }} {{ user.last_name }}</span>
@@ -60,27 +60,95 @@
 
   <span class="spacer"></span>
 
+  <ng-container *ngIf="isLoggedIn">
+    <!-- Chats -->
+    <button mat-icon-button aria-label="Chats" (click)="goToChats()" matTooltip="Chats" class="nav-btn">
+      <mat-icon>chat</mat-icon>
+    </button>
+
+    <!-- Reels -->
+    <button mat-icon-button aria-label="Reels" (click)="goToReels()" matTooltip="Reels" class="nav-btn">
+      <mat-icon>video_library</mat-icon>
+    </button>
+
+    <!-- Lives -->
+    <button mat-icon-button aria-label="Envivos" (click)="goToLive()" matTooltip="Envivos" class="nav-btn">
+      <mat-icon>live_tv</mat-icon>
+    </button>
+
+    <!-- Notifications Bell Dropdown -->
+    <button
+      mat-icon-button
+      [matMenuTriggerFor]="notifMenu"
+      (menuOpened)="onNotificationsMenuOpen()"
+      aria-label="Notificaciones"
+      matTooltip="Notificaciones"
+      class="nav-btn notif-bell-btn"
+    >
+      <mat-icon [matBadge]="unreadNotificationsCount" [matBadgeHidden]="unreadNotificationsCount === 0" matBadgeColor="warn">
+        notifications
+      </mat-icon>
+    </button>
+    <mat-menu #notifMenu="matMenu" xPosition="before" class="notifications-dropdown-menu">
+      <div class="notif-menu-header" (click)="$event.stopPropagation()">
+        <h3>Notificaciones</h3>
+        <button mat-button color="primary" class="mark-all-read-btn" (click)="markNotificationsRead()">
+          Marcar todo leído
+        </button>
+      </div>
+      <mat-divider></mat-divider>
+      <div class="notif-items-container" (click)="$event.stopPropagation()">
+        <div *ngIf="notifications.length === 0" class="notif-empty-state">
+          <mat-icon>notifications_none</mat-icon>
+          <p>No tienes notificaciones</p>
+        </div>
+        <div
+          *ngFor="let notif of notifications"
+          class="notif-dropdown-item"
+          [class.unread]="!notif.is_read"
+          (click)="handleNotificationClick(notif)"
+        >
+          <div class="notif-icon-wrapper">
+            <mat-icon [class]="notif.type">{{ getNotificationIcon(notif.type) }}</mat-icon>
+          </div>
+          <div class="notif-content-wrapper">
+            <p class="notif-text">{{ notif.text }}</p>
+            <span class="notif-time">{{ parseNotificationDate(notif.created_at) | date:'short' }}</span>
+          </div>
+        </div>
+      </div>
+    </mat-menu>
+  </ng-container>
+
   <!-- Avatar button — navigates to own profile -->
   <button
+    *ngIf="isLoggedIn"
     mat-icon-button
     aria-label="Ir a mi perfil"
     (click)="goToMyProfile()"
     class="avatar-btn"
     matTooltip="Mi perfil"
   >
-    <ng-container *ngIf="currentUser$ | async as user">
+    <ng-container *ngIf="currentUser$ | async as user; else defaultAvatar">
       <img
-        *ngIf="user.avatar_base64"
-        [src]="'data:' + user.avatar_mime + ';base64,' + user.avatar_base64"
+        *ngIf="user.avatar_url || user.avatar_base64"
+        [src]="user.avatar_url || 'data:' + user.avatar_mime + ';base64,' + user.avatar_base64"
         alt="Foto de perfil"
         class="toolbar-avatar"
       />
-      <mat-icon *ngIf="!user.avatar_base64">account_circle</mat-icon>
+      <mat-icon *ngIf="!user.avatar_url && !user.avatar_base64">account_circle</mat-icon>
     </ng-container>
-    <mat-icon *ngIf="!(currentUser$ | async)">manage_accounts</mat-icon>
+    <ng-template #defaultAvatar>
+      <mat-icon>account_circle</mat-icon>
+    </ng-template>
   </button>
 
-  <button mat-icon-button aria-label="Cerrar sesión" (click)="logout()">
+  <!-- Dark Mode Switch -->
+  <button *ngIf="isLoggedIn" mat-icon-button (click)="toggleDarkMode()" [matTooltip]="isDarkMode ? 'Modo Claro' : 'Modo Oscuro'" class="nav-btn theme-toggle-btn">
+    <mat-icon>{{ isDarkMode ? 'light_mode' : 'dark_mode' }}</mat-icon>
+  </button>
+
+  <button *ngIf="isLoggedIn" mat-icon-button aria-label="Cerrar sesión" (click)="logout()" class="nav-btn logout-btn">
     <mat-icon>logout</mat-icon>
   </button>
 </mat-toolbar>

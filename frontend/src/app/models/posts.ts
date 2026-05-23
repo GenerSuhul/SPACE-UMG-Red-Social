@@ -20,6 +20,7 @@ export interface Post {
   author_username:       string;
   author_avatar_base64:  string | null;
   author_avatar_mime:    string | null;
+  author_avatar_url?:    string | null;
   content:               string;
   media_urls:            string[];
   images:                PostImage[];
@@ -36,10 +37,12 @@ export interface Comment {
   author_username:      string;
   author_avatar_base64: string | null;
   author_avatar_mime:   string | null;
+  author_avatar_url?:   string | null;
   content:              string;
   parent_comment_id:    string | null;
   image_base64:         string | null;
   image_mime:           string | null;
+  image_url?:           string | null;
   created_at:           string;
   reactions_count:      ReactionsCount;
 }

@@ -15,8 +15,13 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { UsersService } from '../../../service/users/users';
 import { PostsService } from '../../../service/posts/posts';
+import { UploadService } from '../../../service/upload';
+import { TokenService } from '../../../service/auth/token';
+import { Auth } from '../../../service/auth/auth';
 import { UserInterface } from '../../../models/users';
 import { Post } from '../../../models/posts';
+import { forkJoin, of } from 'rxjs';
+import { catchError, filter, map } from 'rxjs/operators';
 
 import { NotificationDialog } from '../../shared/notification-dialog/notification-dialog';
 import { NotificationDialogData } from '../../shared/notification-dialog/notification-dialog.model';
@@ -40,6 +45,7 @@ export class UsersManager implements OnInit {
   previewUrl       = signal<string | null>(null);
   followersCount   = signal(0);
   followingCount   = signal(0);
+  viewMode         = signal<'grid' | 'feed' | 'info'>('grid');
 
   user = signal<UserInterface | null>(null);
 
@@ -56,10 +62,13 @@ export class UsersManager implements OnInit {
 
   private readonly usersService = inject(UsersService);
   private readonly postsService = inject(PostsService);
+  private readonly uploadService = inject(UploadService);
   private readonly dialog       = inject(MatDialog);
   private readonly router       = inject(Router);
   private readonly cdr          = inject(ChangeDetectorRef);
   private readonly snackBar     = inject(MatSnackBar);
+  private readonly tokenService = inject(TokenService);
+  private readonly authService  = inject(Auth);
 
   constructor(private fb: FormBuilder) {
     this.updateForm = this.fb.group({
@@ -177,7 +186,43 @@ export class UsersManager implements OnInit {
     const content: string = this.newPostForm.get('content')!.value;
     const files = this.selectedPostFiles();
 
-    this.postsService.createPost(content, files).subscribe({
+    if (files.length > 0) {
+      // Parallel uploads to Cloudflare R2
+      const uploadTasks = files.map(file => 
+        this.uploadService.uploadFile(file, 'post').pipe(
+          filter((event: any) => event.type === 4), // HttpEventType.Response is 4
+          map((event: any) => event.body.url),
+          catchError(err => {
+            console.error('Error uploading file to R2:', err);
+            return of(null);
+          })
+        )
+      );
+
+      forkJoin(uploadTasks).subscribe({
+        next: (urls: (string | null)[]) => {
+          const validUrls = urls.filter((url): url is string => !!url);
+          if (validUrls.length === 0) {
+            this.creatingPost.set(false);
+            this.cdr.markForCheck();
+            this.snackBar.open('Error al subir los archivos multimedia a R2.', 'Cerrar', { duration: 4000 });
+            return;
+          }
+          this.createPostWithMedia(content, validUrls);
+        },
+        error: () => {
+          this.creatingPost.set(false);
+          this.cdr.markForCheck();
+          this.snackBar.open('Ocurrió un error al subir los archivos multimedia.', 'Cerrar', { duration: 4000 });
+        }
+      });
+    } else {
+      this.createPostWithMedia(content, []);
+    }
+  }
+
+  private createPostWithMedia(content: string, mediaUrls: string[]): void {
+    this.postsService.createPost(content, [], mediaUrls).subscribe({
       next: (res) => {
         this.creatingPost.set(false);
         this.showNewPostForm.set(false);
@@ -185,7 +230,7 @@ export class UsersManager implements OnInit {
         this.clearPostImages();
         this.posts.update(current => [res.post, ...current]);
         this.cdr.markForCheck();
-        this.snackBar.open('Publicación creada.', 'Cerrar', { duration: 3000 });
+        this.snackBar.open('Publicación creada con multimedia real R2.', 'Cerrar', { duration: 3000 });
       },
       error: () => {
         this.creatingPost.set(false);
@@ -198,6 +243,9 @@ export class UsersManager implements OnInit {
   get avatarSrc(): string | null {
     if (this.previewUrl()) return this.previewUrl();
     const u = this.user();
+    if (u?.avatar_url) {
+      return u.avatar_url;
+    }
     if (u?.avatar_base64 && u.avatar_mime) {
       return `data:${u.avatar_mime};base64,${u.avatar_base64}`;
     }
@@ -296,5 +344,39 @@ export class UsersManager implements OnInit {
 
   private openDialog(data: NotificationDialogData): void {
     this.dialog.open(NotificationDialog, { data });
+  }
+
+  getTotalReactions(post: Post): number {
+    if (!post || !post.reactions_count) return 0;
+    const rc = post.reactions_count;
+    return (rc.like || 0) + (rc.love || 0) + (rc.haha || 0) + (rc.wow || 0) + (rc.sad || 0) + (rc.angry || 0);
+  }
+
+  selectGridPost(postId: string): void {
+    this.viewMode.set('feed');
+    this.cdr.detectChanges();
+
+    setTimeout(() => {
+      const element = document.getElementById('post-' + postId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.classList.add('highlight-glow');
+        setTimeout(() => {
+          element.classList.remove('highlight-glow');
+        }, 2000);
+      }
+    }, 100);
+  }
+
+  logout(): void {
+    this.authService.logoutUser().subscribe({
+      next: () => this.clearAndRedirect(),
+      error: () => this.clearAndRedirect(),
+    });
+  }
+
+  private clearAndRedirect(): void {
+    this.tokenService.clear();
+    this.router.navigate(['/auth/login']);
   }
 }

@@ -2,3 +2,34 @@
   <app-toolbar />
 }
 <router-outlet />
+
+@if (isLoggedIn()) {
+  <!-- Floating Publish FAB Button for Mobile -->
+  <button class="mobile-fab-publish" (click)="triggerMobilePublish()" title="Publicar">
+    <mat-icon>add</mat-icon>
+  </button>
+
+  <!-- Mobile Bottom Navigation Bar -->
+  <nav class="mobile-bottom-nav">
+    <button class="mobile-nav-item" [class.active]="isActive('/')" (click)="navigate('/')">
+      <mat-icon>home</mat-icon>
+      <span>Inicio</span>
+    </button>
+    <button class="mobile-nav-item" [class.active]="isActive('/chats')" (click)="navigate('/chats')">
+      <mat-icon>chat</mat-icon>
+      <span>Chats</span>
+    </button>
+    <button class="mobile-nav-item" [class.active]="isActive('/reels')" (click)="navigate('/reels')">
+      <mat-icon>play_circle_outline</mat-icon>
+      <span>Reels</span>
+    </button>
+    <button class="mobile-nav-item" [class.active]="isActive('/live')" (click)="navigate('/live')">
+      <mat-icon>live_tv</mat-icon>
+      <span>En Vivo</span>
+    </button>
+    <button class="mobile-nav-item" [class.active]="isActive('/users')" (click)="navigate('/users')">
+      <mat-icon>person</mat-icon>
+      <span>Mi Perfil</span>
+    </button>
+  </nav>
+}

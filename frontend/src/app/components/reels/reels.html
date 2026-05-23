@@ -1,0 +1,120 @@
+<div class="reels-page fade-in">
+  <div class="reels-header">
+    <h2>Reels UMG</h2>
+    <button mat-flat-button class="btn-primary" (click)="toggleCreate()">
+      <mat-icon>add_circle_outline</mat-icon>
+      Nuevo Reel
+    </button>
+  </div>
+
+  <!-- Create Reel Modal Form Overlay -->
+  @if (showCreateForm) {
+    <div class="modal-overlay" (click)="toggleCreate()">
+      <div class="glass-panel create-reel-card" (click)="$event.stopPropagation()">
+        <h3>Crear nuevo Reel</h3>
+        <p class="subtitle">Comparte un video corto en SPACE UMG</p>
+        
+        <form [formGroup]="reelForm" (ngSubmit)="submitReel()" class="reel-form">
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>Descripción</mat-label>
+            <textarea matInput formControlName="content" placeholder="¿De qué trata tu Reel?" rows="3"></textarea>
+          </mat-form-field>
+
+          <div class="video-upload-zone" (click)="fileInput.click()">
+            <input type="file" #fileInput (change)="onFileSelected($event)" accept="video/mp4,video/quicktime,video/webm" style="display: none;">
+            
+            @if (!selectedFile) {
+              <mat-icon class="upload-icon">videocam</mat-icon>
+              <span class="upload-text">Selecciona un video</span>
+              <span class="upload-hint">MP4, MOV o WebM (máx. 100MB)</span>
+            } @else {
+              <mat-icon class="selected-icon">check_circle</mat-icon>
+              <span class="file-name">{{ selectedFileName }}</span>
+              <span class="file-size">{{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB</span>
+              <button mat-button color="warn" class="change-file-btn" type="button" (click)="$event.stopPropagation(); selectedFile = null; selectedFileName = ''">
+                Cambiar video
+              </button>
+            }
+          </div>
+
+          @if (uploading) {
+            <div class="upload-progress-wrapper">
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" [style.width.%]="uploadProgress"></div>
+              </div>
+              <div class="progress-text-row">
+                <span>Subiendo a Cloudflare R2...</span>
+                <span>{{ uploadProgress }}%</span>
+              </div>
+            </div>
+          }
+
+          <div class="form-actions">
+            <button mat-button type="button" [disabled]="uploading" (click)="toggleCreate()">Cancelar</button>
+            <button mat-flat-button class="btn-primary" type="submit" [disabled]="reelForm.invalid || !selectedFile || uploading">
+              @if (uploading) {
+                Subiendo...
+              } @else {
+                Publicar Reel
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- Reels Scrollable Feed -->
+  <div class="reels-feed">
+    @if (reels.length === 0) {
+      <div class="empty-reels glass-panel">
+        <mat-icon>video_library</mat-icon>
+        <h3>Cargando reels...</h3>
+      </div>
+    } @else {
+      @for (reel of reels; track reel.id) {
+        <div class="reel-card glass-panel">
+          <div class="video-wrapper">
+            <!-- HTML5 Autoplaying Looping muted video -->
+            <video [src]="reel.media_urls?.[0]" 
+                   class="reel-video" 
+                   loop 
+                   muted 
+                   playsinline>
+            </video>
+
+            <!-- Video Overlay with Text & Author -->
+            <div class="video-overlay">
+              <div class="reel-info">
+                <div class="author-row">
+                  <div class="avatar-stub">
+                    {{ reel.author_username?.charAt(0)?.toUpperCase() }}
+                  </div>
+                  <span class="username">@{{ reel.author_username }}</span>
+                </div>
+                <p class="caption">{{ reel.content }}</p>
+              </div>
+
+              <!-- Interactions sidebar -->
+              <div class="interactions-sidebar">
+                <button mat-fab class="action-btn" (click)="likeReel(reel)">
+                  <mat-icon>favorite</mat-icon>
+                  <span class="count-label">{{ getLikesCount(reel) }}</span>
+                </button>
+
+                <button mat-fab class="action-btn">
+                  <mat-icon>comment</mat-icon>
+                  <span class="count-label">{{ reel.comments_count || 0 }}</span>
+                </button>
+
+                <button mat-fab class="action-btn">
+                  <mat-icon>share</mat-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    }
+  </div>
+</div>

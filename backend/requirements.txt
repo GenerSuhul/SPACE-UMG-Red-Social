@@ -1,0 +1,9 @@
+flask
+flask-pymongo
+flask-jwt-extended
+flasgger
+flask-cors
+python-dotenv
+pymongo[srv]
+boto3
+Pillow

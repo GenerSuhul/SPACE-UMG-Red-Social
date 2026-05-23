@@ -3,13 +3,13 @@
   <!-- Post header -->
   <mat-card-header class="post-header">
     <img
-      *ngIf="post.author_avatar_base64"
+      *ngIf="post.author_avatar_url || post.author_avatar_base64"
       mat-card-avatar
       class="author-avatar author-avatar--img"
-      [src]="'data:' + post.author_avatar_mime + ';base64,' + post.author_avatar_base64"
+      [src]="post.author_avatar_url || ('data:' + post.author_avatar_mime + ';base64,' + post.author_avatar_base64)"
       alt="Avatar de {{ post.author_username }}" />
     <mat-icon
-      *ngIf="!post.author_avatar_base64"
+      *ngIf="!post.author_avatar_url && !post.author_avatar_base64"
       mat-card-avatar
       class="author-avatar"
       aria-hidden="true">account_circle</mat-icon>
@@ -46,7 +46,7 @@
     <ng-container *ngIf="!editMode()">
       <p class="content-text">{{ post.content }}</p>
 
-      <!-- Galería de imágenes -->
+      <!-- Galería de imágenes (Base64) -->
       <div *ngIf="post.images.length > 0" class="post-images-grid">
         <div
           *ngFor="let img of post.images"
@@ -54,21 +54,36 @@
           <img
             [src]="'data:' + img.mime + ';base64,' + img.base64"
             class="post-image"
-            alt="Imagen de la publicacion" />
+            alt="Imagen de la publicación" />
         </div>
       </div>
 
-      <div *ngIf="post.media_urls.length > 0" class="media-row">
-        <a
-          *ngFor="let url of post.media_urls"
-          [href]="url"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="media-link"
-          aria-label="Ver archivo adjunto">
-          <mat-icon>attach_file</mat-icon>
-          <span class="media-url-text">{{ url }}</span>
-        </a>
+      <!-- Galería de multimedia (R2 URLs) -->
+      <div *ngIf="post.media_urls.length > 0" class="post-images-grid">
+        <div *ngFor="let url of post.media_urls" class="post-image-item">
+          <img
+            *ngIf="isImageUrl(url)"
+            [src]="url"
+            class="post-image"
+            alt="Imagen de la publicación R2" />
+          <video
+            *ngIf="isVideoUrl(url)"
+            [src]="url"
+            controls
+            class="post-video"
+            playsinline>
+          </video>
+          <a
+            *ngIf="!isImageUrl(url) && !isVideoUrl(url)"
+            [href]="url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="media-link"
+            aria-label="Ver archivo adjunto">
+            <mat-icon>attach_file</mat-icon>
+            <span class="media-url-text">{{ url }}</span>
+          </a>
+        </div>
       </div>
     </ng-container>
 
@@ -169,35 +184,56 @@
 
   </mat-card-content>
 
+  <!-- Reactions summary bar — premium look like Instagram / Threads -->
+  <div *ngIf="interactive && totalReactions > 0" class="reactions-summary-bar">
+    <div class="reactions-summary-emojis">
+      <ng-container *ngFor="let opt of reactionOptions">
+        <span *ngIf="post.reactions_count[opt.type] > 0" class="summary-emoji">{{ opt.emoji }}</span>
+      </ng-container>
+    </div>
+    <span class="reactions-summary-text">{{ reactionSummary }}</span>
+  </div>
+
   <mat-divider *ngIf="interactive"></mat-divider>
 
   <!-- Action bar — only in interactive mode -->
   <mat-card-actions *ngIf="interactive" class="action-bar">
 
-    <!-- Reaction button (MatMenu picker) -->
+    <!-- Reaction button (CSS hover floating tray) -->
     <div class="reaction-group" role="group" aria-label="Reaccionar a la publicacion">
-      <button
-        mat-button
-        class="comment-react-btn"
-        [class.comment-react-btn--active]="myPostReaction() !== null"
-        [disabled]="reactingToPost()"
-        [matMenuTriggerFor]="postReactionMenu"
-        [attr.aria-label]="myPostReaction() ? 'Cambiar reacción' : 'Reaccionar'">
-        <span class="react-emoji">{{ myPostReaction() ? reactionByType(myPostReaction()!).emoji : '👍' }}</span>
-        <span class="react-label">{{ myPostReaction() ? reactionByType(myPostReaction()!).label : 'Reaccionar' }}</span>
-      </button>
-      <mat-menu #postReactionMenu="matMenu" class="reaction-picker-menu">
+      <div class="reaction-container">
+        
+        <!-- The Floating Reactions Bar -->
+        <div class="floating-reactions-bar">
+          <button
+            *ngFor="let opt of reactionOptions"
+            type="button"
+            class="reaction-icon-btn"
+            [class.reaction-icon-btn--active]="myPostReaction() === opt.type"
+            [attr.aria-label]="opt.label"
+            (click)="reactToPost(opt.type)"
+          >
+            <span class="emoji-img">{{ opt.emoji }}</span>
+            <span class="emoji-tooltip">{{ opt.label }}</span>
+          </button>
+        </div>
+
+        <!-- The Trigger Button -->
         <button
-          *ngFor="let opt of reactionOptions"
-          mat-menu-item
-          class="reaction-menu-item"
-          [class.reaction-menu-item--active]="myPostReaction() === opt.type"
-          (click)="reactToPost(opt.type)">
-          <span class="menu-emoji">{{ opt.emoji }}</span>
-          <span>{{ opt.label }}</span>
-          <span *ngIf="post.reactions_count[opt.type] > 0" class="menu-count">({{ post.reactions_count[opt.type] }})</span>
+          mat-button
+          class="comment-react-btn"
+          [class.comment-react-btn--active]="myPostReaction() !== null"
+          [disabled]="reactingToPost()"
+          (click)="reactToPost(myPostReaction() ? myPostReaction()! : 'like')"
+          [attr.aria-label]="myPostReaction() ? 'Cambiar reacción' : 'Reaccionar'"
+        >
+          <span class="react-emoji">{{ myPostReaction() ? reactionByType(myPostReaction()!).emoji : '👍' }}</span>
+          <span class="react-label">{{ myPostReaction() ? reactionByType(myPostReaction()!).label : 'Reaccionar' }}</span>
         </button>
-      </mat-menu>
+
+      </div>
+
+      <!-- Displays current reaction totals as chips -->
       <ng-container *ngFor="let opt of reactionOptions">
         <span *ngIf="post.reactions_count[opt.type] > 0" class="post-reaction-chip">
           {{ opt.emoji }} {{ post.reactions_count[opt.type] }}
@@ -212,9 +248,29 @@
       (click)="toggleExpanded()"
       [attr.aria-expanded]="expanded()"
       aria-controls="comments-section-{{ post.id }}">
-      <mat-icon>{{ expanded() ? 'expand_less' : 'expand_more' }}</mat-icon>
-      {{ post.comments_count }} comentario{{ post.comments_count !== 1 ? 's' : '' }}
+      <mat-icon>chat_bubble_outline</mat-icon>
+      <span>{{ post.comments_count > 0 ? post.comments_count + ' Comentar' : 'Comentar' }}</span>
     </button>
+
+    <!-- Share button with menu -->
+    <button
+      mat-button
+      class="share-btn"
+      [matMenuTriggerFor]="shareMenu"
+      aria-label="Compartir publicación">
+      <mat-icon>share</mat-icon>
+      <span>Compartir</span>
+    </button>
+    <mat-menu #shareMenu="matMenu" class="share-dropdown-menu">
+      <button mat-menu-item (click)="repostPost()">
+        <mat-icon>autorenew</mat-icon>
+        <span>Republicar en mi feed</span>
+      </button>
+      <button mat-menu-item (click)="sharePost()">
+        <mat-icon>link</mat-icon>
+        <span>Copiar enlace</span>
+      </button>
+    </mat-menu>
 
   </mat-card-actions>
 
@@ -252,12 +308,12 @@
 
         <div class="comment-header">
           <img
-            *ngIf="comment.author_avatar_base64"
+            *ngIf="comment.author_avatar_url || comment.author_avatar_base64"
             class="comment-avatar comment-avatar--img"
-            [src]="'data:' + comment.author_avatar_mime + ';base64,' + comment.author_avatar_base64"
+            [src]="comment.author_avatar_url || ('data:' + comment.author_avatar_mime + ';base64,' + comment.author_avatar_base64)"
             alt="Avatar de {{ comment.author_username }}" />
           <mat-icon
-            *ngIf="!comment.author_avatar_base64"
+            *ngIf="!comment.author_avatar_url && !comment.author_avatar_base64"
             class="comment-avatar"
             aria-hidden="true">account_circle</mat-icon>
           <div class="comment-meta">
@@ -288,9 +344,9 @@
         <p class="comment-content">{{ comment.content }}</p>
 
         <!-- Comment image -->
-        <div *ngIf="comment.image_base64" class="comment-image-wrapper">
+        <div *ngIf="comment.image_url || comment.image_base64" class="comment-image-wrapper">
           <img
-            [src]="'data:' + comment.image_mime + ';base64,' + comment.image_base64"
+            [src]="comment.image_url || ('data:' + comment.image_mime + ';base64,' + comment.image_base64)"
             class="comment-image"
             alt="Imagen del comentario" />
         </div>
@@ -374,12 +430,12 @@
 
               <div class="comment-header">
                 <img
-                  *ngIf="reply.author_avatar_base64"
+                  *ngIf="reply.author_avatar_url || reply.author_avatar_base64"
                   class="comment-avatar comment-avatar--img"
-                  [src]="'data:' + reply.author_avatar_mime + ';base64,' + reply.author_avatar_base64"
+                  [src]="reply.author_avatar_url || ('data:' + reply.author_avatar_mime + ';base64,' + reply.author_avatar_base64)"
                   alt="Avatar de {{ reply.author_username }}" />
                 <mat-icon
-                  *ngIf="!reply.author_avatar_base64"
+                  *ngIf="!reply.author_avatar_url && !reply.author_avatar_base64"
                   class="comment-avatar"
                   aria-hidden="true">account_circle</mat-icon>
                 <div class="comment-meta">
@@ -404,9 +460,9 @@
               <p class="comment-content">{{ reply.content }}</p>
 
               <!-- Reply image -->
-              <div *ngIf="reply.image_base64" class="comment-image-wrapper">
+              <div *ngIf="reply.image_url || reply.image_base64" class="comment-image-wrapper">
                 <img
-                  [src]="'data:' + reply.image_mime + ';base64,' + reply.image_base64"
+                  [src]="reply.image_url || ('data:' + reply.image_mime + ';base64,' + reply.image_base64)"
                   class="comment-image"
                   alt="Imagen de la respuesta" />
               </div>

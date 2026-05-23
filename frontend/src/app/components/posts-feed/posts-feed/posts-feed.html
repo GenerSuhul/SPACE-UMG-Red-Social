@@ -1,143 +1,446 @@
-<div class="feed-wrapper">
+<div class="feed-container">
 
-  <!-- Header bar -->
-  <div class="feed-header">
-    <h1 class="feed-title">
-      <mat-icon aria-hidden="true">dynamic_feed</mat-icon>
-      Feed
-    </h1>
-    <button
-      mat-raised-button
-      color="primary"
-      (click)="toggleNewPostForm()"
-      [attr.aria-expanded]="showNewPostForm()">
-      <mat-icon>{{ showNewPostForm() ? 'close' : 'add' }}</mat-icon>
-      {{ showNewPostForm() ? 'Cancelar' : 'Nueva publicacion' }}
-    </button>
-  </div>
-
-  <!-- New post form -->
-  <mat-card *ngIf="showNewPostForm()" class="new-post-card">
-    <mat-card-header>
-      <mat-card-title>Crear publicacion</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
-      <form [formGroup]="newPostForm" (ngSubmit)="submitNewPost()" novalidate>
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Que quieres compartir?</mat-label>
-          <textarea
-            matInput
-            formControlName="content"
-            rows="4"
-            placeholder="Escribe tu publicacion..."
-            aria-label="Contenido de la publicacion">
-          </textarea>
-          <mat-error *ngIf="newPostForm.get('content')?.hasError('required')">
-            El contenido es obligatorio.
-          </mat-error>
-          <mat-error *ngIf="newPostForm.get('content')?.hasError('maxlength')">
-            Maximo 5000 caracteres.
-          </mat-error>
-        </mat-form-field>
-
-        <!-- Image upload area -->
-        <div class="image-upload-area">
-          <label class="image-upload-label" aria-label="Adjuntar imágenes a la publicacion">
-            <mat-icon>add_photo_alternate</mat-icon>
-            <span>{{ selectedFiles().length > 0 ? 'Cambiar selección' : 'Adjuntar imágenes' }}</span>
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
-              multiple
-              class="file-input-hidden"
-              (change)="onPostImageSelected($event)"
-              aria-label="Seleccionar imágenes">
-          </label>
-          <span class="image-hint">Máx. 5 imágenes · 5 MB c/u</span>
+  <!-- ── 1. COLUMNA IZQUIERDA: PERFIL Y RECOMENDACIONES ── -->
+  <aside class="left-sidebar" role="complementary" aria-label="Mi perfil y recomendaciones">
+    
+    <!-- Tarjeta de Perfil del Alumno -->
+    <div class="profile-preview-card glass-panel" *ngIf="currentUser$ | async as user; else profileLoading">
+      <div class="profile-card-header-bg"></div>
+      <div class="profile-card-avatar-wrapper">
+        <img
+          *ngIf="user.avatar_url || user.avatar_base64"
+          [src]="user.avatar_url || ('data:' + user.avatar_mime + ';base64,' + user.avatar_base64)"
+          alt="Foto de perfil"
+          class="sidebar-avatar"
+        />
+        <mat-icon *ngIf="!user.avatar_url && !user.avatar_base64" class="sidebar-avatar-icon">account_circle</mat-icon>
+      </div>
+      <div class="profile-card-info">
+        <h2 class="profile-card-name">{{ user.first_name }} {{ user.last_name }}</h2>
+        <span class="profile-card-username">@{{ user.username }}</span>
+        <span class="profile-card-faculty">Facultad de Ingeniería en Sistemas</span>
+        <span class="profile-card-university">UMG · Estudiante</span>
+      </div>
+      <div class="profile-card-divider"></div>
+      <div class="profile-card-stats">
+        <div class="stat-item" [routerLink]="['/users']">
+          <span class="stat-value">{{ user.followers_count ?? 0 }}</span>
+          <span class="stat-label">Seguidores</span>
         </div>
+        <div class="stat-vertical-divider"></div>
+        <div class="stat-item" [routerLink]="['/users']">
+          <span class="stat-value">{{ user.following_count ?? 0 }}</span>
+          <span class="stat-label">Siguiendo</span>
+        </div>
+      </div>
+    </div>
+    
+    <ng-template #profileLoading>
+      <div class="profile-preview-card glass-panel loading-card">
+        <mat-spinner diameter="32"></mat-spinner>
+        <p>Cargando perfil...</p>
+      </div>
+    </ng-template>
 
-        <!-- Image previews -->
-        <div *ngIf="postImagePreviews().length > 0" class="post-images-grid preview-grid">
-          <div
-            *ngFor="let preview of postImagePreviews(); let i = index"
-            class="post-image-item preview-item">
-            <img [src]="preview" class="post-image" alt="Vista previa" />
-            <button
-              mat-icon-button
-              type="button"
-              class="remove-preview-btn"
-              (click)="removePostImage(i)"
-              matTooltip="Quitar imagen">
-              <mat-icon>close</mat-icon>
-            </button>
+    <!-- Widget de Alumnos Recomendados (MongoDB Mutual Connection) -->
+    <div class="recommendations-card glass-panel">
+      <div class="sidebar-card-header">
+        <mat-icon>group_add</mat-icon>
+        <h3>Alumnos recomendados</h3>
+      </div>
+      
+      <div *ngIf="loadingRecommendations()" class="recommendations-loading">
+        <mat-spinner diameter="24"></mat-spinner>
+      </div>
+
+      <div *ngIf="!loadingRecommendations() && recommendations().length === 0" class="recommendations-empty">
+        <p>No hay más recomendaciones por ahora</p>
+      </div>
+
+      <div *ngIf="!loadingRecommendations() && recommendations().length > 0" class="recommendations-list">
+        <div *ngFor="let rec of recommendations()" class="recommendation-item">
+          <div class="rec-avatar-wrapper">
+            <img
+              *ngIf="rec.avatar_url || rec.avatar_base64"
+              [src]="rec.avatar_url || ('data:' + rec.avatar_mime + ';base64,' + rec.avatar_base64)"
+              alt=""
+              class="rec-avatar"
+            />
+            <mat-icon *ngIf="!rec.avatar_url && !rec.avatar_base64" class="rec-avatar-icon">account_circle</mat-icon>
           </div>
-        </div>
-
-        <div class="form-actions">
+          <div class="rec-info">
+            <span class="rec-name" [routerLink]="['/users', rec.id]">{{ rec.first_name }} {{ rec.last_name }}</span>
+            <span class="rec-mutual">
+              {{ rec.mutual_count > 0 ? rec.mutual_count + ' conex. en común' : '@' + rec.username }}
+            </span>
+          </div>
           <button
-            mat-raised-button
-            color="primary"
-            type="submit"
-            [disabled]="creatingPost() || newPostForm.invalid">
-            <mat-spinner *ngIf="creatingPost()" diameter="18" class="inline-spinner"></mat-spinner>
-            <span *ngIf="!creatingPost()">Publicar</span>
+            mat-icon-button
+            class="rec-follow-btn"
+            matTooltip="Seguir alumno"
+            (click)="followUser(rec.id)"
+            aria-label="Seguir alumno"
+          >
+            <mat-icon>person_add</mat-icon>
           </button>
         </div>
-      </form>
-    </mat-card-content>
-  </mat-card>
+      </div>
+    </div>
 
-  <!-- Loading state -->
-  <div *ngIf="loadingFeed()" class="state-center" role="status" aria-label="Cargando publicaciones">
-    <mat-spinner diameter="48"></mat-spinner>
-    <p>Cargando publicaciones...</p>
-  </div>
+  </aside>
 
-  <!-- Error state -->
-  <div *ngIf="feedError() && !loadingFeed()" class="state-center error-state" role="alert">
-    <mat-icon color="warn">error_outline</mat-icon>
-    <p>{{ feedError() }}</p>
-    <button mat-stroked-button color="primary" (click)="loadPosts(currentPage)">
-      Reintentar
-    </button>
-  </div>
+  <!-- ── 2. COLUMNA CENTRAL: FEED Y PUBLICACIONES ── -->
+  <main class="center-feed" role="main">
 
-  <!-- Empty state -->
-  <div *ngIf="!loadingFeed() && !feedError() && posts().length === 0" class="state-center" role="status">
-    <mat-icon class="empty-icon">inbox</mat-icon>
-    <p>Aun no hay publicaciones. Sé el primero en compartir algo.</p>
-  </div>
+    <!-- Stories Premium Tray (Instagram Style) -->
+    <div class="stories-tray glass-panel">
+      <!-- 1. Add Story Bubble -->
+      <div class="story-bubble-wrapper" (click)="storyFileInput.click()">
+        <input type="file" #storyFileInput (change)="onStoryFileSelected($event)" accept="image/*,video/*" style="display: none;">
+        
+        <div class="story-bubble add-story">
+          @if (uploadingStory()) {
+            <div class="story-loader-overlay">
+              <mat-progress-spinner mode="determinate" [value]="storyProgress()" [diameter]="32"></mat-progress-spinner>
+              <span class="pct">{{ storyProgress() }}%</span>
+            </div>
+          } @else {
+            <div class="avatar-stub-add">
+              <mat-icon>add</mat-icon>
+            </div>
+          }
+        </div>
+        <span class="story-bubble-username">Tu historia</span>
+      </div>
 
-  <!-- Posts list -->
-  <div *ngIf="!loadingFeed() && !feedError() && posts().length > 0" class="posts-list">
-    <app-post-item
-      *ngFor="let post of posts(); trackBy: trackByPostId"
-      [post]="post"
-      (postDeleted)="onPostDeleted($event)">
-    </app-post-item>
-  </div>
+      <!-- 2. Rest of the Stories -->
+      @for (story of stories(); track story.id; let idx = $index) {
+        <div class="story-bubble-wrapper" (click)="openStory(idx)">
+          <div class="story-bubble ring-active">
+            <div class="story-bubble-inner">
+              @if (story.type === 'video') {
+                <video [src]="story.media_url" class="story-preview-media" muted playsinline></video>
+              } @else {
+                <img [src]="story.media_url" class="story-preview-media" alt="Story preview" />
+              }
+              <div class="story-author-overlay">
+                {{ story.author_username?.charAt(0)?.toUpperCase() }}
+              </div>
+            </div>
+          </div>
+          <span class="story-bubble-username">@{{ story.author_username }}</span>
+        </div>
+      }
+    </div>
 
-  <!-- Pagination -->
-  <div *ngIf="!loadingFeed() && totalPages > 1" class="pagination-row" role="navigation" aria-label="Paginacion">
-    <button
-      mat-icon-button
-      [disabled]="currentPage === 1"
-      (click)="goToPage(currentPage - 1)"
-      aria-label="Pagina anterior"
-      matTooltip="Pagina anterior">
-      <mat-icon>chevron_left</mat-icon>
-    </button>
+    <!-- Publisher Box Premium (Estilo FB/IG) -->
+    <div class="publisher-card glass-panel" *ngIf="currentUser$ | async as user">
+      <div class="publisher-top">
+        <div class="publisher-avatar-wrapper">
+          <img
+            *ngIf="user.avatar_url || user.avatar_base64"
+            [src]="user.avatar_url || ('data:' + user.avatar_mime + ';base64,' + user.avatar_base64)"
+            alt="Mi foto de perfil"
+            class="publisher-avatar"
+          />
+          <mat-icon *ngIf="!user.avatar_url && !user.avatar_base64">account_circle</mat-icon>
+        </div>
+        <button class="publisher-trigger-btn" (click)="toggleNewPostForm()">
+          ¿Qué quieres compartir hoy, {{ user.first_name }}?
+        </button>
+      </div>
+      <div class="publisher-divider"></div>
+      <div class="publisher-bottom">
+        <button class="publisher-action-btn media" (click)="toggleNewPostForm()">
+          <mat-icon>image</mat-icon>
+          <span>Foto / Video</span>
+        </button>
+        <button class="publisher-action-btn reel" [routerLink]="['/reels']">
+          <mat-icon>video_library</mat-icon>
+          <span>Reel corto</span>
+        </button>
+        <button class="publisher-action-btn live" [routerLink]="['/live']">
+          <mat-icon>live_tv</mat-icon>
+          <span>En vivo</span>
+        </button>
+      </div>
+    </div>
 
-    <span class="page-indicator">{{ currentPage }} / {{ totalPages }}</span>
+    <!-- Formulario para crear publicación (Expandible) -->
+    <mat-card *ngIf="showNewPostForm()" class="new-post-card fade-in">
+      <mat-card-header class="new-post-header">
+        <mat-card-title>Crear publicación</mat-card-title>
+        <button mat-icon-button (click)="toggleNewPostForm()" class="close-post-form-btn">
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="newPostForm" (ngSubmit)="submitNewPost()" novalidate>
+          <mat-form-field appearance="outline" class="full-width">
+            <textarea
+              matInput
+              formControlName="content"
+              rows="4"
+              placeholder="Comparte algo interesante sobre tus clases, código o proyectos UMG..."
+              aria-label="Contenido de la publicación">
+            </textarea>
+            <mat-error *ngIf="newPostForm.get('content')?.hasError('required')">
+              El contenido es obligatorio.
+            </mat-error>
+            <mat-error *ngIf="newPostForm.get('content')?.hasError('maxlength')">
+              Máximo 5000 caracteres.
+            </mat-error>
+          </mat-form-field>
 
-    <button
-      mat-icon-button
-      [disabled]="currentPage === totalPages"
-      (click)="goToPage(currentPage + 1)"
-      aria-label="Pagina siguiente"
-      matTooltip="Pagina siguiente">
-      <mat-icon>chevron_right</mat-icon>
-    </button>
-  </div>
+          <!-- Image upload area -->
+          <div class="image-upload-area">
+            <label class="image-upload-label" aria-label="Adjuntar imágenes a la publicación">
+              <mat-icon>add_photo_alternate</mat-icon>
+              <span>{{ selectedFiles().length > 0 ? 'Cambiar selección' : 'Adjuntar imágenes' }}</span>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                multiple
+                class="file-input-hidden"
+                (change)="onPostImageSelected($event)"
+                aria-label="Seleccionar imágenes">
+            </label>
+            <span class="image-hint">Máx. 5 imágenes · 5 MB c/u</span>
+          </div>
+
+          <!-- Image previews -->
+          <div *ngIf="postImagePreviews().length > 0" class="post-images-grid preview-grid">
+            <div
+              *ngFor="let preview of postImagePreviews(); let i = index"
+              class="post-image-item preview-item">
+              <img [src]="preview" class="post-image" alt="Vista previa" />
+              <button
+                mat-icon-button
+                type="button"
+                class="remove-preview-btn"
+                (click)="removePostImage(i)"
+                matTooltip="Quitar imagen">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Upload Progress Bar -->
+          <div *ngIf="uploadingFiles()" class="upload-progress-container">
+            <div class="progress-bar-label">Subiendo archivos a R2... {{ uploadProgress() }}%</div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" [style.width.%]="uploadProgress()"></div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button
+              mat-raised-button
+              class="btn-primary"
+              type="submit"
+              [disabled]="creatingPost() || newPostForm.invalid">
+              <mat-spinner *ngIf="creatingPost()" diameter="18" class="inline-spinner"></mat-spinner>
+              <span *ngIf="!creatingPost()">Publicar</span>
+            </button>
+          </div>
+        </form>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Loading state -->
+    <div *ngIf="loadingFeed()" class="state-center" role="status" aria-label="Cargando publicaciones">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Sincronizando feed de SPACE UMG...</p>
+    </div>
+
+    <!-- Error state -->
+    <div *ngIf="feedError() && !loadingFeed()" class="state-center error-state" role="alert">
+      <mat-icon color="warn">error_outline</mat-icon>
+      <p>{{ feedError() }}</p>
+      <button mat-stroked-button color="primary" (click)="loadPosts(currentPage)">
+        Reintentar
+      </button>
+    </div>
+
+    <!-- Empty state -->
+    <div *ngIf="!loadingFeed() && !feedError() && posts().length === 0" class="state-center" role="status">
+      <mat-icon class="empty-icon">feed</mat-icon>
+      <p>Aún no hay publicaciones en el campus. Sé el primero en compartir algo.</p>
+    </div>
+
+    <!-- Posts list -->
+    <div *ngIf="!loadingFeed() && !feedError() && posts().length > 0" class="posts-list">
+      <app-post-item
+        *ngFor="let post of posts(); trackBy: trackByPostId"
+        [post]="post"
+        [interactive]="true"
+        (postDeleted)="onPostDeleted($event)"
+        (postUpdated)="onPostUpdated($event)">
+      </app-post-item>
+    </div>
+
+    <!-- Pagination -->
+    <div *ngIf="!loadingFeed() && totalPages > 1" class="pagination-row" role="navigation" aria-label="Paginación">
+      <button
+        mat-icon-button
+        [disabled]="currentPage === 1"
+        (click)="goToPage(currentPage - 1)"
+        aria-label="Página anterior"
+        matTooltip="Página anterior">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+
+      <span class="page-indicator">{{ currentPage }} / {{ totalPages }}</span>
+
+      <button
+        mat-icon-button
+        [disabled]="currentPage === totalPages"
+        (click)="goToPage(currentPage + 1)"
+        aria-label="Página siguiente"
+        matTooltip="Página siguiente">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+
+  </main>
+
+  <!-- ── 3. COLUMNA DERECHA: TENDENCIAS Y CHATS RÁPIDOS ── -->
+  <aside class="right-sidebar" role="complementary" aria-label="Tendencias y chat de compañeros">
+
+    <!-- Tarjeta de Tendencias del Campus -->
+    <div class="trends-card glass-panel">
+      <div class="sidebar-card-header">
+        <mat-icon>trending_up</mat-icon>
+        <h3>Tendencias del Campus</h3>
+      </div>
+      <div class="trends-list">
+        <div class="trend-item">
+          <span class="trend-hashtag">#SistemasUMG</span>
+          <span class="trend-count">2.4k alumnos comentando</span>
+        </div>
+        <div class="trend-item">
+          <span class="trend-hashtag">#IngenieriaUMG</span>
+          <span class="trend-count">1.8k posts esta semana</span>
+        </div>
+        <div class="trend-item">
+          <span class="trend-hashtag">#SPACE_UMG</span>
+          <span class="trend-count">4.5k interacciones</span>
+        </div>
+        <div class="trend-item">
+          <span class="trend-hashtag">#BaseDeDatosNoSQL</span>
+          <span class="trend-count">940 estudiantes</span>
+        </div>
+        <div class="trend-item">
+          <span class="trend-hashtag">#MetodosNumericos</span>
+          <span class="trend-count">350 alumnos sufriendo</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel de Chats Rápidos / Compañeros Activos -->
+    <div class="active-chats-card glass-panel">
+      <div class="sidebar-card-header">
+        <mat-icon>chat_bubble_outline</mat-icon>
+        <h3>Mensajes rápidos</h3>
+      </div>
+
+      <div *ngIf="activeChats().length === 0" class="active-chats-empty">
+        <mat-icon>chat_bubble_none</mat-icon>
+        <p>No tienes chats recientes activos</p>
+      </div>
+
+      <div *ngIf="activeChats().length > 0" class="active-chats-list">
+        <div *ngFor="let chat of activeChats()" class="chat-sidebar-item">
+          <div class="chat-sidebar-avatar-wrapper">
+            <img
+              *ngIf="chat.other_participant.avatar_url || chat.other_participant.avatar_base64"
+              [src]="chat.other_participant.avatar_url || ('data:' + chat.other_participant.avatar_mime + ';base64,' + chat.other_participant.avatar_base64)"
+              alt=""
+              class="chat-sidebar-avatar"
+            />
+            <mat-icon *ngIf="!chat.other_participant.avatar_url && !chat.other_participant.avatar_base64" class="chat-sidebar-avatar-icon">account_circle</mat-icon>
+            <span
+              class="status-dot-indicator"
+              [class.online]="chat.other_participant.online_status === 'online'"
+              [class.offline]="chat.other_participant.online_status !== 'online'"
+            ></span>
+          </div>
+          <div class="chat-sidebar-info">
+            <span class="chat-sidebar-name">{{ chat.other_participant.first_name }} {{ chat.other_participant.last_name }}</span>
+            <span class="chat-sidebar-status">
+              {{ chat.other_participant.online_status === 'online' ? 'Activo ahora' : 'Desconectado' }}
+            </span>
+          </div>
+          <button
+            mat-icon-button
+            class="chat-sidebar-btn"
+            matTooltip="Chatear ahora"
+            (click)="startChatWith(chat.other_participant.id)"
+            aria-label="Enviar mensaje directo"
+          >
+            <mat-icon>message</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- Fullscreen Stories Viewer Modal -->
+  @if (activeStoryIndex() !== null) {
+    <div class="story-viewer-overlay" (click)="closeStory()">
+      <div class="story-viewer-container" (click)="$event.stopPropagation()">
+        
+        <!-- Segmented Instagram Progress Ticks -->
+        <div class="story-progress-bar">
+          @for (s of stories(); track s.id; let idx = $index) {
+            <div class="story-progress-tick">
+              <div class="story-progress-tick-fill"
+                   [style.width.%]="idx === activeStoryIndex() ? storyViewerProgress() : (idx < activeStoryIndex()! ? 100 : 0)">
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Story Header: Author, Close button -->
+        <div class="story-viewer-header">
+          <div class="author-info">
+            <div class="avatar-stub">
+              {{ stories()[activeStoryIndex()!].author_username?.charAt(0)?.toUpperCase() }}
+            </div>
+            <span class="username">@{{ stories()[activeStoryIndex()!].author_username }}</span>
+          </div>
+          <button mat-icon-button class="close-viewer-btn" (click)="closeStory()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+
+        <!-- Story Content (Image or Video) -->
+        <div class="story-viewer-content">
+          @if (stories()[activeStoryIndex()!].type === 'video') {
+            <video [src]="stories()[activeStoryIndex()!].media_url" 
+                   class="story-viewer-media" 
+                   autoplay 
+                   muted
+                   loop
+                   playsinline>
+            </video>
+          } @else {
+            <img [src]="stories()[activeStoryIndex()!].media_url" 
+                 class="story-viewer-media" 
+                 alt="Story media" />
+          }
+        </div>
+
+        <!-- Story Navigation Controls -->
+        <button class="nav-btn prev" (click)="prevStory()">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <button class="nav-btn next" (click)="nextStory()">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    </div>
+  }
 
 </div>
