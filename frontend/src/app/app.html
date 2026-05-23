@@ -4,10 +4,12 @@
 <router-outlet />
 
 @if (isLoggedIn()) {
-  <!-- Floating Publish FAB Button for Mobile -->
-  <button class="mobile-fab-publish" (click)="triggerMobilePublish()" title="Publicar">
-    <mat-icon>add</mat-icon>
-  </button>
+  @if (showMobileFab()) {
+    <!-- Floating Publish FAB Button for Mobile -->
+    <button class="mobile-fab-publish" (click)="triggerMobilePublish()" title="Publicar">
+      <mat-icon>add</mat-icon>
+    </button>
+  }
 
   <!-- Mobile Bottom Navigation Bar -->
   <nav class="mobile-bottom-nav">

@@ -27,6 +27,10 @@ export class App {
     return !!this.tokenService.get();
   });
 
+  protected readonly showMobileFab = computed(() => {
+    return this.isLoggedIn() && !this.currentUrl().startsWith('/chats');
+  });
+
   constructor() {
     this.router.events
       .pipe(

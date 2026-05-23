@@ -387,7 +387,8 @@
 @media (max-width: 768px) {
   .chats-container {
     padding: 0;
-    height: calc(100vh - 64px);
+    height: calc(100vh - 122px) !important;
+    height: calc(100dvh - 122px) !important;
   }
   
   /* WhatsApp Flow: By default, show sidebar at 100% width, hide chat room */
