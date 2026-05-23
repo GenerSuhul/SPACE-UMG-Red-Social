@@ -114,6 +114,11 @@ export class Chats implements OnInit, OnDestroy {
     });
   }
 
+  closeActiveChat(): void {
+    this.activeChat = null;
+    this.cdr.markForCheck();
+  }
+
   loadMessagesSilently(chatId: string): void {
     this.chatsService.listMessages(chatId).subscribe({
       next: (res) => {

@@ -379,22 +379,60 @@
   transform: scale(1.05);
 }
 
+.back-to-list-btn {
+  display: none !important;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .chats-container {
     padding: 0;
     height: calc(100vh - 64px);
   }
-  .chats-sidebar {
-    width: 80px;
-    padding: 5px;
+  
+  /* WhatsApp Flow: By default, show sidebar at 100% width, hide chat room */
+  .chats-layout .chats-sidebar {
+    width: 100% !important;
+    display: flex !important;
+    background: rgba(255, 255, 255, 0.95);
   }
-  .sidebar-header h2, .brand-sub, .chat-details, .chat-time {
-    display: none;
+  
+  :host-context(body.dark-mode) .chats-layout .chats-sidebar {
+    background: #0f172a !important;
   }
-  .avatar-container {
-    margin-right: 0;
+
+  .chats-layout .chats-room {
+    display: none !important;
+    width: 100% !important;
+  }
+
+  /* When a chat is active, hide sidebar and show chat room at 100% width */
+  .chats-layout.room-active .chats-sidebar {
+    display: none !important;
+  }
+  
+  .chats-layout.room-active .chats-room {
+    display: flex !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .back-to-list-btn {
+    display: flex !important;
+    align-items: center;
     justify-content: center;
+    margin-right: 12px;
+    color: var(--text-primary) !important;
+  }
+  
+  /* Ensure all sidebar details are visible on mobile */
+  .sidebar-header h2, .brand-sub, .chat-details, .chat-time {
+    display: block !important;
+  }
+  
+  .avatar-container {
+    margin-right: 12px !important;
+    justify-content: flex-start !important;
   }
 }
 

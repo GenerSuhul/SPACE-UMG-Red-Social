@@ -1,5 +1,5 @@
 <div class="chats-container fade-in">
-  <div class="glass-panel chats-layout">
+  <div class="glass-panel chats-layout" [class.room-active]="activeChat !== null">
     
     <!-- Left Panel: Chat List -->
     <div class="chats-sidebar">
@@ -114,6 +114,9 @@
       } @else {
         <!-- Chat Header -->
         <div class="chat-header">
+          <button mat-icon-button class="back-to-list-btn" (click)="closeActiveChat()" aria-label="Volver a los chats">
+            <mat-icon>arrow_back</mat-icon>
+          </button>
           <div class="active-user-info">
             <div class="avatar-container">
               @if (activeChat.other_participant?.avatar_url || activeChat.other_participant?.avatar_base64) {
