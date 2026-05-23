@@ -64,13 +64,25 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: space-frontend
-    ports:
-      - "${FRONTEND_PORT:-80}:80"
+    # No bind ports on host to avoid conflicts. Dokploy's Traefik routes directly inside overlay network.
     depends_on:
       - backend
       - websocket
     networks:
       - space-network
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      # HTTP Router (Port 80)
+      - "traefik.http.routers.space-frontend.rule=Host(`space.umg.kyrosoftgs.com`)"
+      - "traefik.http.routers.space-frontend.entrypoints=web"
+      # HTTPS Router (Port 443 with TLS Auto-SSL)
+      - "traefik.http.routers.space-frontend-secure.rule=Host(`space.umg.kyrosoftgs.com`)"
+      - "traefik.http.routers.space-frontend-secure.entrypoints=websecure"
+      - "traefik.http.routers.space-frontend-secure.tls=true"
+      - "traefik.http.routers.space-frontend-secure.tls.certresolver=letsencrypt"
+      # Point to frontend Nginx container port 80
+      - "traefik.http.services.space-frontend-service.loadbalancer.server.port=80"
 
 volumes:
   mongo_red_social:
@@ -78,3 +90,6 @@ volumes:
 networks:
   space-network:
     driver: bridge
+  dokploy-network:
+    external: true
+    name: dokploy-network
